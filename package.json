@@ -1,0 +1,13 @@
+{
+  "type": "module",
+  "name": "robodoc",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "node api/create-order.js"
+  },
+  "dependencies": {
+    "razorpay": "^2.9.6",
+    "firebase-admin": "^12.6.0",  
+    "dotenv": "^16.4.5"        
+  }
+}

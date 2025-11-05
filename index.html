@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RoboDoc — Your AI Doctor</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+  </head>
+
+  <style>
+    html {scroll-behavior: smooth;}
+  </style>
+
+  <body class="bg-white text-gray-800 font-sans">
+
+   <!-- Navbar -->
+<header class="fixed top-0 w-full bg-white shadow-md z-50">
+  <div class="flex justify-between items-center py-4 px-6 md:px-12">
+    <!-- Logo -->
+    <h1 class="text-2xl font-bold text-blue-700 tracking-tight">RoboDoc</h1>
+
+    <!-- Desktop Nav -->
+    <nav class="hidden md:flex items-center space-x-8">
+      <a href="#features" class="text-gray-700 hover:text-blue-600 transition">Features</a>
+      <a href="#how-it-works" class="text-gray-700 hover:text-blue-600 transition">How It Works</a>
+      <a href="#contact" class="text-gray-700 hover:text-blue-600 transition">Contact</a>
+      <a
+        href="login.html"
+        class="ml-2 px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+      >
+        Login
+      </a>
+    </nav>
+
+    <!-- Mobile Menu Button -->
+    <button
+      id="menu-btn"
+      class="md:hidden text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 rounded"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-7 w-7"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M4 6h16M4 12h16M4 18h16"
+        />
+      </svg>
+    </button>
+  </div>
+
+<!-- Mobile Slide-In Nav -->
+<div
+  id="mobile-menu"
+  class="fixed top-0 right-0 h-screen bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out md:hidden flex flex-col items-start justify-start p-8 space-y-8"
+  style="width: 65vw;"
+>
+  <!-- Close Button -->
+  <button id="close-btn" class="self-end text-gray-500 hover:text-blue-700 transition">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      class="h-8 w-8"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M6 18L18 6M6 6l12 12"
+      />
+    </svg>
+  </button>
+
+  <!-- Mobile Nav Links -->
+  <nav class="flex flex-col space-y-12 mt-12 w-full text-left">
+    <a
+      href="#features"
+      class="text-gray-700 text-xl font-medium hover:text-blue-600 transition leading-relaxed"
+    >
+      Features
+    </a>
+    <a
+      href="#how-it-works"
+      class="text-gray-700 text-xl font-medium hover:text-blue-600 transition leading-relaxed"
+    >
+      How It Works
+    </a>
+    <a
+      href="#contact"
+      class="text-gray-700 text-xl font-medium hover:text-blue-600 transition leading-relaxed"
+    >
+      Contact
+    </a>
+    <a
+      href="login.html"
+      class="mt-10 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-center w-full text-lg tracking-wide"
+    >
+      Login
+    </a>
+  </nav>
+</div>
+
+  </div>
+</header>
+
+<script>
+  const menuBtn = document.getElementById('menu-btn');
+  const closeBtn = document.getElementById('close-btn');
+  const mobileMenu = document.getElementById('mobile-menu');
+
+  menuBtn.addEventListener('click', () => {
+    mobileMenu.classList.remove('translate-x-full');
+    mobileMenu.classList.add('translate-x-0');
+  });
+
+  closeBtn.addEventListener('click', () => {
+    mobileMenu.classList.remove('translate-x-0');
+    mobileMenu.classList.add('translate-x-full');
+  });
+</script>
+
+
+   <!-- Hero Section -->
+<section
+  class="relative flex flex-col md:flex-row items-center justify-between px-6 md:px-16 py-20 md:py-32 bg-gradient-to-br from-blue-50 via-green-50 to-white overflow-hidden mt-16 md:mt-0"
+>
+  <!-- Decorative gradient blobs (background style) -->
+  <div class="absolute top-[-100px] left-[-100px] w-72 h-72 bg-blue-200 rounded-full blur-3xl opacity-30 animate-pulse"></div>
+  <div class="absolute bottom-[-120px] right-[-100px] w-96 h-96 bg-green-200 rounded-full blur-3xl opacity-30 animate-pulse"></div>
+
+  <div class="relative z-10 max-w-xl text-center md:text-left">
+    <h2
+      class="text-4xl md:text-6xl font-extrabold text-blue-800 leading-tight mb-6 animate-fadeInUp"
+      style="animation-delay: 0.1s"
+    >
+      Meet <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-600">RoboDoc</span>  Your 24/7 AI Doctor
+    </h2>
+
+    <p
+      class="text-lg md:text-xl text-gray-600 mb-8 leading-relaxed animate-fadeInUp"
+      style="animation-delay: 0.3s"
+    >
+      Instantly analyze your symptoms with advanced AI trained on medical data. Get accurate, reliable, and private health insights anytime, anywhere — no queues, no waiting.
+    </p>
+
+    <div
+      class="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center md:justify-start animate-fadeInUp"
+      style="animation-delay: 0.5s"
+    >
+      <a
+        href="login.html"
+        class="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition transform duration-300"
+      >
+        Get Started
+      </a>
+      <a
+        href="#features"
+        class="px-8 py-3 border-2 border-blue-600 text-blue-700 font-semibold rounded-lg hover:bg-blue-600 hover:text-white hover:-translate-y-1 transition transform duration-300"
+      >
+        Learn More
+      </a>
+    </div>
+  </div>
+
+ <div
+  class="relative mt-20 md:mt-0 md:w-1/2 flex justify-center animate-fadeInUp"
+  style="animation-delay: 0.6s"
+>
+  <!-- Cool glassy floating card around the Lottie -->
+  <div
+    class="relative bg-white/40 backdrop-blur-lg border border-white/30 shadow-2xl rounded-3xl p-8 w-[320px] md:w-[420px] flex flex-col items-center justify-center"
+  >
+    <div
+      class="absolute -top-8 -right-8 w-24 h-24 bg-gradient-to-br from-blue-400 to-green-400 rounded-full blur-2xl opacity-40 animate-pulse"
+    ></div>
+    <div
+      class="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-tr from-green-300 to-blue-400 rounded-full blur-2xl opacity-30 animate-pulse"
+    ></div>
+
+<!-- Lottie Animation -->
+<lottie-player
+  src="doc.json"
+  background="transparent"
+  speed="1"
+  style="width: 280px; height: 280px;"
+  loop
+  autoplay
+></lottie-player>
+
+
+    <!-- Subtext under animation -->
+    <p class="mt-6 text-center text-gray-600 text-base font-medium leading-relaxed">
+      Powered by real-time AI medical models to understand and guide you.
+    </p>
+  </div>
+</div>
+
+
+  <!-- Simple fade-in animation keyframes -->
+  <style>
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(40px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .animate-fadeInUp {
+      animation: fadeInUp 0.8s ease forwards;
+    }
+  </style>
+</section>
+
+
+    <!-- Features Section -->
+<section id="features" class="relative py-24 px-6 md:px-16 bg-gradient-to-b from-white to-blue-50 overflow-hidden">
+  <div class="absolute inset-0 -z-10">
+    <div class="absolute top-[-100px] right-[-150px] w-96 h-96 bg-blue-200/40 rounded-full blur-3xl"></div>
+    <div class="absolute bottom-[-150px] left-[-150px] w-96 h-96 bg-green-200/40 rounded-full blur-3xl"></div>
+  </div>
+
+  <div class="max-w-6xl mx-auto text-center">
+    <h3 class="text-4xl font-extrabold text-blue-800 mb-4">
+      Why Choose <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-600">RoboDoc</span>
+    </h3>
+    <p class="text-gray-600 max-w-2xl mx-auto mb-16">
+      Our AI-powered healthcare engine brings speed, security, and personalization together — redefining how you interact with medical care.
+    </p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+      <!-- Card 1 -->
+      <div class="group relative bg-white/40 backdrop-blur-lg border border-white/30 rounded-3xl p-10 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+        <div class="absolute inset-0 rounded-3xl bg-gradient-to-r from-blue-100/20 to-green-100/20 opacity-0 group-hover:opacity-100 transition"></div>
+        <div class="relative z-10">
+          <div class="mb-6 mx-auto w-20 h-20 flex items-center justify-center bg-blue-600/10 rounded-2xl">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 13l4 4L21 5" />
+            </svg>
+          </div>
+          <h4 class="text-2xl font-semibold text-blue-800 mb-3">Instant AI Diagnosis</h4>
+          <p class="text-gray-600 leading-relaxed">
+            Describe your symptoms — RoboDoc instantly analyzes and suggests possible causes using cutting-edge medical AI.
+          </p>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="group relative bg-white/40 backdrop-blur-lg border border-white/30 rounded-3xl p-10 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+        <div class="absolute inset-0 rounded-3xl bg-gradient-to-r from-green-100/20 to-blue-100/20 opacity-0 group-hover:opacity-100 transition"></div>
+        <div class="relative z-10">
+          <div class="mb-6 mx-auto w-20 h-20 flex items-center justify-center bg-green-600/10 rounded-2xl">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-1.105-.895-2-2-2s-2 .895-2 2 2 6 2 6 2-4.895 2-6zm0 0c1.105 0 2 .895 2 2s-2 6-2 6-2-4.895-2-6 2-2 2-2z" />
+            </svg>
+          </div>
+          <h4 class="text-2xl font-semibold text-blue-800 mb-3">Secure Health Data</h4>
+          <p class="text-gray-600 leading-relaxed">
+            Your information stays fully encrypted with end-to-end security. We never store or sell user data.
+          </p>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="group relative bg-white/40 backdrop-blur-lg border border-white/30 rounded-3xl p-10 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+        <div class="absolute inset-0 rounded-3xl bg-gradient-to-r from-blue-100/20 to-green-100/20 opacity-0 group-hover:opacity-100 transition"></div>
+        <div class="relative z-10">
+          <div class="mb-6 mx-auto w-20 h-20 flex items-center justify-center bg-blue-600/10 rounded-2xl">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8z" />
+            </svg>
+          </div>
+          <h4 class="text-2xl font-semibold text-blue-800 mb-3">Personalized Insights</h4>
+          <p class="text-gray-600 leading-relaxed">
+            AI tailors recommendations based on your age, history, and symptom patterns for more accurate advice.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+   <!-- How It Works Section -->
+<section
+  id="how-it-works"
+  class="relative py-24 px-6 md:px-16 bg-gradient-to-br from-blue-50 via-white to-green-50 overflow-hidden"
+>
+  <!-- Decorative blobs -->
+  <div class="absolute top-[-100px] right-[-100px] w-72 h-72 bg-blue-200/40 rounded-full blur-3xl"></div>
+  <div class="absolute bottom-[-100px] left-[-100px] w-72 h-72 bg-green-200/40 rounded-full blur-3xl"></div>
+
+  <div class="max-w-6xl mx-auto text-center relative z-10">
+    <h3 class="text-4xl font-extrabold text-blue-800 mb-4">
+      How <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-600">RoboDoc</span> Works
+    </h3>
+    <p class="text-gray-600 max-w-2xl mx-auto mb-20">
+      RoboDoc combines advanced AI with secure health data analysis to provide you quick, accurate, and private medical guidance — here’s your journey in 4 steps.
+    </p>
+
+    <!-- Steps timeline -->
+    <div class="relative">
+      <!-- connecting line -->
+      <div class="hidden md:block absolute top-1/2 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-green-400 to-blue-500 rounded-full opacity-40 transform -translate-y-1/2"></div>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-10 md:gap-6 text-center">
+        <!-- Step 1 -->
+        <div class="relative flex flex-col items-center">
+          <div
+            class="w-20 h-20 flex items-center justify-center bg-white rounded-2xl shadow-lg border border-blue-100 mb-6 hover:-translate-y-1 transition-all duration-300"
+          >
+            <span class="text-3xl font-bold text-blue-700">1</span>
+          </div>
+          <h4 class="text-xl font-semibold text-blue-800 mb-2">
+            Create Account
+          </h4>
+          <p class="text-gray-600 leading-relaxed">
+            Sign up securely and set up your personal AI dashboard.
+          </p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="relative flex flex-col items-center">
+          <div
+            class="w-20 h-20 flex items-center justify-center bg-white rounded-2xl shadow-lg border border-green-100 mb-6 hover:-translate-y-1 transition-all duration-300"
+          >
+            <span class="text-3xl font-bold text-green-600">2</span>
+          </div>
+          <h4 class="text-xl font-semibold text-blue-800 mb-2">
+            Enter Symptoms
+          </h4>
+          <p class="text-gray-600 leading-relaxed">
+            Describe your symptoms and basic details in the form.
+          </p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="relative flex flex-col items-center">
+          <div
+            class="w-20 h-20 flex items-center justify-center bg-white rounded-2xl shadow-lg border border-blue-100 mb-6 hover:-translate-y-1 transition-all duration-300"
+          >
+            <span class="text-3xl font-bold text-blue-600">3</span>
+          </div>
+          <h4 class="text-xl font-semibold text-blue-800 mb-2">AI Analysis</h4>
+          <p class="text-gray-600 leading-relaxed">
+            RoboDoc processes data using advanced GPT medical models.
+          </p>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="relative flex flex-col items-center">
+          <div
+            class="w-20 h-20 flex items-center justify-center bg-white rounded-2xl shadow-lg border border-green-100 mb-6 hover:-translate-y-1 transition-all duration-300"
+          >
+            <span class="text-3xl font-bold text-green-600">4</span>
+          </div>
+          <h4 class="text-xl font-semibold text-blue-800 mb-2">
+            Get Recommendations
+          </h4>
+          <p class="text-gray-600 leading-relaxed">
+            Instantly receive personalized AI insights and next steps.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- AI Technology Section -->
+<section class="relative py-24 px-6 md:px-16 bg-gradient-to-b from-blue-50 via-white to-green-50 overflow-hidden">
+  <div class="absolute top-[-120px] right-[-120px] w-80 h-80 bg-blue-200/40 rounded-full blur-3xl"></div>
+  <div class="absolute bottom-[-100px] left-[-100px] w-96 h-96 bg-green-200/40 rounded-full blur-3xl"></div>
+
+  <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-16 relative z-10">
+    <div class="flex-1 text-center md:text-left">
+      <h3 class="text-4xl font-extrabold text-blue-800 mb-4">
+        The Intelligence Behind <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-600">RoboDoc</span>
+      </h3>
+      <p class="text-gray-600 text-lg leading-relaxed mb-6">
+        RoboDoc uses medical-grade AI built on GPT-powered language models fine-tuned with healthcare data.
+        It detects patterns, understands symptoms, and delivers personalized medical suggestions — instantly.
+      </p>
+      <ul class="space-y-3 text-gray-700 text-base">
+        <li><span class="font-semibold text-blue-700">Natural Language Understanding</span> — interprets user symptoms in plain English.</li>
+        <li><span class="font-semibold text-green-700">Medical Knowledge Graph</span> — connects symptoms to conditions intelligently.</li>
+        <li><span class="font-semibold text-blue-700">Adaptive Learning</span> — improves suggestions with real feedback loops.</li>
+      </ul>
+    </div>
+
+    <div class="flex-1 flex justify-center">
+      <div class="relative bg-white/40 backdrop-blur-lg border border-white/30 rounded-3xl shadow-xl p-8 md:w-[420px]">
+        <lottie-player
+          src="https://assets4.lottiefiles.com/packages/lf20_zrqthn6o.json"
+          background="transparent"
+          speed="1"
+          style="width: 100%; height: 320px;"
+          loop
+          autoplay
+        ></lottie-player>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing Section -->
+<section class="relative py-24 px-6 md:px-16 bg-gradient-to-r from-blue-50 to-green-50 overflow-hidden">
+  <div class="absolute top-[-80px] left-[-80px] w-96 h-96 bg-blue-200/40 rounded-full blur-3xl"></div>
+  <div class="absolute bottom-[-100px] right-[-100px] w-96 h-96 bg-green-200/40 rounded-full blur-3xl"></div>
+
+  <div class="max-w-6xl mx-auto text-center relative z-10">
+    <h3 class="text-4xl font-extrabold text-blue-800 mb-4">Plans & Pricing</h3>
+    <p class="text-gray-600 mb-16">Choose a plan that fits your needs. Start free, upgrade when ready.</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+      <!-- Free Plan -->
+      <div class="relative bg-white/40 backdrop-blur-lg border border-white/30 rounded-3xl p-10 shadow-lg hover:shadow-2xl transition duration-300">
+        <h4 class="text-2xl font-semibold text-blue-800 mb-2">Starter</h4>
+        <p class="text-gray-600 mb-6">For basic symptom checks and instant AI responses.</p>
+        <p class="text-4xl font-bold text-blue-700 mb-6">₹0<span class="text-base text-gray-500">/mo</span></p>
+        <ul class="text-gray-700 space-y-2 mb-8">
+          <li>✔ 3 AI Consultations / day</li>
+          <li>✔ Symptom Analysis</li>
+          <li>✖ No History Tracking</li>
+        </ul>
+        <a href="login.html" class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Get Started</a>
+      </div>
+
+      <!-- Pro Plan -->
+      <div class="relative bg-gradient-to-b from-blue-600 to-green-600 text-white rounded-3xl p-10 shadow-xl transform scale-105 border border-blue-400">
+        <h4 class="text-2xl font-semibold mb-2">Pro</h4>
+        <p class="mb-6 text-blue-100">For users who want detailed, continuous health tracking.</p>
+        <p class="text-4xl font-bold mb-6">₹499<span class="text-base text-blue-200">/mo</span></p>
+        <ul class="space-y-2 mb-8">
+          <li>✔ Unlimited Consultations</li>
+          <li>✔ Health History Dashboard</li>
+          <li>✔ Personalized Insights</li>
+        </ul>
+        <a href="login.html" class="inline-block px-6 py-3 bg-white text-blue-700 font-semibold rounded-lg hover:bg-blue-100 transition">Upgrade Now</a>
+      </div>
+
+      <!-- Enterprise Plan -->
+      <div class="relative bg-white/40 backdrop-blur-lg border border-white/30 rounded-3xl p-10 shadow-lg hover:shadow-2xl transition duration-300">
+        <h4 class="text-2xl font-semibold text-blue-800 mb-2">Enterprise</h4>
+        <p class="text-gray-600 mb-6">For clinics, hospitals, or telehealth startups.</p>
+        <p class="text-4xl font-bold text-blue-700 mb-6">Custom</p>
+        <ul class="text-gray-700 space-y-2 mb-8">
+          <li>✔ Clinic Integration</li>
+          <li>✔ API Access</li>
+          <li>✔ 24/7 Priority Support</li>
+        </ul>
+        <a href="#contact" class="inline-block px-6 py-3 border border-blue-600 text-blue-700 rounded-lg hover:bg-blue-100 transition">Contact Us</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="relative py-24 px-6 md:px-16 bg-gradient-to-b from-white to-blue-50 overflow-hidden">
+  <div class="max-w-4xl mx-auto text-center">
+    <h3 class="text-4xl font-extrabold text-blue-800 mb-4">Frequently Asked Questions</h3>
+    <p class="text-gray-600 mb-12">Got questions? We've got AI-powered answers.</p>
+
+    <div class="space-y-6 text-left">
+      <details class="bg-white/40 backdrop-blur-lg border border-white/30 rounded-2xl p-6 shadow-md cursor-pointer">
+        <summary class="font-semibold text-blue-800 text-lg">Is RoboDoc a replacement for a real doctor?</summary>
+        <p class="text-gray-600 mt-2">No. RoboDoc provides preliminary insights and health guidance but does not replace professional medical consultation.</p>
+      </details>
+
+      <details class="bg-white/40 backdrop-blur-lg border border-white/30 rounded-2xl p-6 shadow-md cursor-pointer">
+        <summary class="font-semibold text-blue-800 text-lg">Is my health data secure?</summary>
+        <p class="text-gray-600 mt-2">Yes. All information is encrypted end-to-end, and RoboDoc does not share or sell user data.</p>
+      </details>
+
+      <details class="bg-white/40 backdrop-blur-lg border border-white/30 rounded-2xl p-6 shadow-md cursor-pointer">
+        <summary class="font-semibold text-blue-800 text-lg">Do I need to create an account to use RoboDoc?</summary>
+        <p class="text-gray-600 mt-2">Yes, creating an account helps tailor your health analysis and keeps your insights private.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+
+<!-- Testimonials Section -->
+<section class="relative py-24 px-6 md:px-16 bg-gradient-to-r from-blue-50 to-green-50 overflow-hidden">
+  <div class="max-w-6xl mx-auto text-center">
+    <h3 class="text-4xl font-extrabold text-blue-800 mb-4">What Our Users Say</h3>
+    <p class="text-gray-600 mb-16">Real stories from real people who trusted RoboDoc with their health.</p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+      <div class="bg-white/40 backdrop-blur-lg rounded-3xl p-8 shadow-lg hover:shadow-2xl transition">
+        <p class="text-gray-700 italic mb-4">“RoboDoc helped me understand my symptoms instantly when I couldn’t visit a doctor. It’s like having a health assistant in my pocket.”</p>
+        <h4 class="text-blue-700 font-semibold">— Aisha Patel</h4>
+        <p class="text-gray-500 text-sm">College Student</p>
+      </div>
+
+      <div class="bg-white/40 backdrop-blur-lg rounded-3xl p-8 shadow-lg hover:shadow-2xl transition">
+        <p class="text-gray-700 italic mb-4">“I use RoboDoc daily for my clinic’s symptom checks. The AI is accurate and fast — perfect for quick triage.”</p>
+        <h4 class="text-blue-700 font-semibold">— Dr. Arjun Mehta</h4>
+        <p class="text-gray-500 text-sm">General Physician</p>
+      </div>
+
+      <div class="bg-white/40 backdrop-blur-lg rounded-3xl p-8 shadow-lg hover:shadow-2xl transition">
+        <p class="text-gray-700 italic mb-4">“As a new parent, RoboDoc gives me peace of mind when my kids get sick. I love how human it feels.”</p>
+        <h4 class="text-blue-700 font-semibold">— Riya Khanna</h4>
+        <p class="text-gray-500 text-sm">Parent of Two</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Newsletter Section -->
+<section class="relative py-24 px-6 md:px-16 bg-gradient-to-b from-blue-50 to-green-50 overflow-hidden">
+  <div class="absolute top-[-100px] right-[-100px] w-96 h-96 bg-blue-200/40 rounded-full blur-3xl"></div>
+  <div class="absolute bottom-[-100px] left-[-100px] w-96 h-96 bg-green-200/40 rounded-full blur-3xl"></div>
+
+  <div class="max-w-3xl mx-auto text-center relative z-10">
+    <h3 class="text-4xl font-extrabold text-blue-800 mb-4">Stay Ahead with RoboDoc</h3>
+    <p class="text-gray-600 mb-8 text-lg">
+      Be the first to know when we launch new features, AI upgrades, and medical insights.
+    </p>
+
+    <form
+      class="flex flex-col sm:flex-row items-center justify-center bg-white/40 backdrop-blur-lg border border-white/30 rounded-2xl shadow-lg p-4 sm:p-6 max-w-xl mx-auto"
+    >
+      <input
+        type="email"
+        placeholder="Enter your email"
+        class="flex-1 px-4 py-3 rounded-lg border border-gray-300 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 mb-3 sm:mb-0 sm:mr-3"
+        required
+      />
+      <button
+        type="submit"
+        class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-md hover:shadow-lg"
+      >
+        Subscribe
+      </button>
+    </form>
+
+    <p class="text-gray-500 text-sm mt-4">
+      We respect your privacy — no spam, ever.
+    </p>
+  </div>
+</section>
+
+
+<!-- Contact Section -->
+<section id="contact" class="relative py-24 px-6 md:px-16 bg-gradient-to-br from-white via-blue-50 to-green-50 overflow-hidden">
+  <div class="absolute top-[-100px] left-[-100px] w-96 h-96 bg-blue-200/40 rounded-full blur-3xl"></div>
+  <div class="absolute bottom-[-120px] right-[-120px] w-96 h-96 bg-green-200/40 rounded-full blur-3xl"></div>
+
+  <div class="max-w-5xl mx-auto text-center relative z-10">
+    <h3 class="text-4xl font-extrabold text-blue-800 mb-4">Get in Touch</h3>
+    <p class="text-gray-600 mb-12 text-lg">
+      Have questions, suggestions, or partnership ideas? We’d love to hear from you.
+    </p>
+
+    <form
+      class="bg-white/40 backdrop-blur-lg border border-white/30 rounded-3xl shadow-xl p-8 md:p-12 max-w-3xl mx-auto text-left"
+    >
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <input
+          type="text"
+          placeholder="Your Name"
+          class="px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          required
+        />
+        <input
+          type="email"
+          placeholder="Your Email"
+          class="px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          required
+        />
+      </div>
+      <textarea
+        placeholder="Your Message..."
+        rows="5"
+        class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 mb-6"
+        required
+      ></textarea>
+      <button
+        type="submit"
+        class="w-full md:w-auto px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-md hover:shadow-lg"
+      >
+        Send Message
+      </button>
+    </form>
+
+    <p class="text-gray-500 text-sm mt-6">
+      Or email us directly at
+      <a href="mailto:support@robodoc.ai" class="text-blue-600 hover:underline">support@robodoc.ai</a>
+    </p>
+  </div>
+</section>
+
+
+
+<!-- Footer -->
+<footer class="bg-blue-900 text-white py-12 px-6 md:px-16">
+  <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
+    <!-- Left side: Brand and tagline -->
+    <div class="text-center md:text-left">
+      <h2 class="text-2xl font-bold mb-2">RoboDoc</h2>
+      <p class="text-gray-300 text-sm md:text-base max-w-sm">
+        Your trusted 24/7 AI doctor — fast, private, and reliable health insights powered by intelligent medical models.
+      </p>
+    </div>
+
+    <!-- Center: Navigation Links -->
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm">
+      <a href="#" class="hover:text-blue-200 transition">About</a>
+      <a href="#contact" class="hover:text-blue-200 transition">Contact</a>
+      <a href="#" class="hover:text-blue-200 transition">Privacy Policy</a>
+      <a href="#" class="hover:text-blue-200 transition">Terms of Service</a>
+    </div>
+
+    <!-- Right side: Socials or CTA -->
+    <div class="text-center md:text-right space-y-2">
+      <p class="text-sm text-gray-300">Follow RoboDoc for updates:</p>
+      <div class="flex justify-center md:justify-end gap-4">
+        <a href="#" class="hover:text-blue-300 transition" aria-label="Twitter">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M22.46 6c-.77.35-1.6.58-2.46.69a4.27 4.27 0 0 0 1.88-2.37 8.52 8.52 0 0 1-2.7 1.04A4.23 4.23 0 0 0 16.1 4a4.24 4.24 0 0 0-4.24 4.24c0 .33.03.66.1.98A12.06 12.06 0 0 1 3 5.1a4.23 4.23 0 0 0 1.31 5.65 4.2 4.2 0 0 1-1.92-.53v.05a4.25 4.25 0 0 0 3.4 4.16 4.28 4.28 0 0 1-1.91.07 4.25 4.25 0 0 0 3.97 2.95A8.5 8.5 0 0 1 2 19.54a12 12 0 0 0 6.56 1.93c7.88 0 12.2-6.53 12.2-12.2 0-.19 0-.37-.01-.56A8.7 8.7 0 0 0 22.46 6z" />
+          </svg>
+        </a>
+        <a href="#" class="hover:text-blue-300 transition" aria-label="GitHub">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.28 3.44 9.75 8.2 11.33.6.1.82-.26.82-.58v-2.17c-3.34.73-4.04-1.6-4.04-1.6-.55-1.4-1.34-1.78-1.34-1.78-1.1-.75.08-.74.08-.74 1.21.09 1.84 1.26 1.84 1.26 1.09 1.87 2.85 1.33 3.55 1.02.1-.8.43-1.33.78-1.64-2.67-.3-5.47-1.34-5.47-5.97 0-1.32.47-2.4 1.25-3.25-.13-.3-.54-1.52.12-3.16 0 0 1.01-.32 3.3 1.23a11.4 11.4 0 0 1 6 0c2.3-1.55 3.3-1.23 3.3-1.23.66 1.64.25 2.86.12 3.16.78.85 1.25 1.93 1.25 3.25 0 4.64-2.8 5.66-5.48 5.96.44.38.84 1.12.84 2.25v3.34c0 .32.22.69.82.57A11.99 11.99 0 0 0 24 12.5C24 5.87 18.63.5 12 .5z" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <hr class="border-t border-blue-800 my-8" />
+
+  <!-- Bottom credit line -->
+  <div class="text-center text-gray-400 text-sm">
+    <p>© 2025 RoboDoc. All rights reserved.</p>
+    <p class="mt-1">
+      Made with ❤️ by <span class="font-semibold text-blue-300">Zayyan Shaikh</span>
+    </p>
+  </div>
+</footer>
+
+  </body>
+</html>

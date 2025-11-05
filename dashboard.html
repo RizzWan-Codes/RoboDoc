@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RoboDoc Dashboard</title>
+
+  <!-- Tailwind CDN (v2 compatible used earlier) -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.8.0/dist/chart.min.js"></script>
+
+  <!-- Lottie -->
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+
+  <!-- Razorpay -->
+   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <style>
+    .sidebar {
+      min-width: 240px;
+    }
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+    }
+    .typewriter { white-space: pre-wrap; word-break: break-word; }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-white to-green-50 min-h-screen font-sans">
+
+<!-- Firebase SDK modules (v10) -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+  import {
+    getAuth,
+    signOut,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
+  import {
+    getFirestore,
+    doc,
+    getDoc,
+    setDoc,
+    collection,
+    addDoc,
+    query,
+    where,
+    orderBy,
+    limit,
+    getDocs,
+    serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+
+  // ---------- CONFIG: Your complete Firebase config ----------
+  const firebaseConfig = {
+    apiKey: "AIzaSyBAsbvZbtA5dgk_fFMqVI2j4kBckp6n62c",
+    authDomain: "robodoc-db1d3.firebaseapp.com",
+    projectId: "robodoc-db1d3",
+    storageBucket: "robodoc-db1d3.firebasestorage.app",
+    messagingSenderId: "886593524703",
+    appId: "1:886593524703:web:5b8e2c82959aa632ba6a6a"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // Helper toast
+  function toast(msg, type="info") {
+    const colors = { info: "bg-blue-500", success: "bg-green-500", error: "bg-red-500" };
+    const t = document.createElement("div");
+    t.className = `${colors[type] || colors.info} text-white px-4 py-2 rounded fixed top-6 right-6 shadow z-50`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(()=> t.remove(), 3000);
+  }
+
+  // Global variables
+  let currentUser = null;
+  let currentUserDoc = null;
+  let lastAnalysisId = null;
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    console.log("No user detected, redirecting to login");
+    window.location.replace("login.html");
+    return;
+  }
+
+  console.log("✅ User authenticated:", user.email);
+  currentUser = user;
+
+  const avatar = document.getElementById("userAvatar");
+  const initial = document.getElementById("userInitial");
+  const username = document.getElementById("username");
+  const emailDisplay = document.getElementById("userEmail");
+
+  // Default values
+  let photoURL = user.photoURL || null;
+  let displayName = user.displayName || user.email.split("@")[0];
+
+  try {
+    // 🧠 Fetch user doc from Firestore (wait properly)
+    const userDocRef = doc(db, "user", user.uid);
+    const userSnap = await getDoc(userDocRef);
+
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      console.log("📦 Firestore data:", data);
+
+      // Overwrite Auth values if Firestore has better info
+      if (data.name) displayName = data.name;
+      if (data.email) emailDisplay.textContent = data.email;
+      if (data.photoURL) photoURL = data.photoURL;
+    } else {
+      console.log("⚠️ No user doc found for:", user.uid);
+    }
+  } catch (err) {
+    console.error("🔥 Error fetching Firestore data:", err);
+  }
+
+  // 🎨 If still no photo, generate a random avatar
+  if (!photoURL) {
+    const seed = displayName.replace(/\s+/g, "") || user.uid;
+    photoURL = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}`;
+  }
+
+  // ✅ Apply avatar and name
+  if (photoURL) {
+    avatar.src = photoURL;
+    avatar.classList.remove("hidden");
+    initial.classList.add("hidden");
+  } else {
+    initial.textContent = displayName.charAt(0).toUpperCase();
+    avatar.classList.add("hidden");
+    initial.classList.remove("hidden");
+  }
+
+  // 🧩 Update UI text
+  username.textContent = displayName;
+  document.getElementById("usernameHeader").textContent = displayName;
+  emailDisplay.textContent = user.email;
+
+  // 💥 Finally load the rest of dashboard
+  await initializeDashboard();
+});
+
+
+  async function initializeDashboard() {
+    try {
+      // Load user data from Firestore
+      const userDocRef = doc(db, "user", currentUser.uid);
+      const userSnap = await getDoc(userDocRef);
+      
+      if (userSnap.exists()) {
+        currentUserDoc = userSnap.data();
+      }
+
+      // Update UI with user info
+      const displayName = currentUser.displayName || currentUserDoc?.name || "User";
+      document.getElementById("usernameHeader").textContent = displayName;
+      document.getElementById("username").textContent = displayName;
+      document.getElementById("userEmail").textContent = currentUser.email;
+
+      // Load analyses and chart
+      await loadAnalysesAndChart();
+
+      toast("Welcome back!", "success");
+    } catch (error) {
+      console.error("Error initializing dashboard:", error);
+      toast("Error loading dashboard: " + error.message, "error");
+    }
+  }
+
+  // Elements references after DOM ready
+  document.addEventListener("DOMContentLoaded", async () => {
+    // UI elements
+    const logoutBtn = document.getElementById("logoutBtn");
+    const formEl = document.getElementById("symptomForm");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const resultsContainer = document.getElementById("resultsContainer");
+    const analysesList = document.getElementById("analysesList");
+    const chartCanvas = document.getElementById("healthChart");
+    const continueChatBtn = document.getElementById("continueChatBtn");
+    const chatModal = document.getElementById("chatModal");
+    const chatInput = document.getElementById("chatInput");
+    const chatArea = document.getElementById("chatArea");
+
+    // LOGOUT
+    logoutBtn.addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+        window.location.replace("login.html");
+      } catch (error) {
+        toast("Logout failed: " + error.message, "error");
+      }
+    });
+
+    // SUBMIT / ANALYZE
+    analyzeBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+
+      if (!currentUser) {
+        toast("Not authenticated", "error");
+        return;
+      }
+
+      // read form fields
+      const form = new FormData(formEl);
+      const payload = {
+        userId: currentUser.uid,
+        name: form.get("name"),
+        age: form.get("age"),
+        gender: form.get("gender"),
+        weight: form.get("weight"),
+        height: form.get("height"),
+        symptoms: form.get("symptoms"),
+        severity: form.get("severity"),
+        details: form.get("details"),
+        agents: []
+      };
+      if (form.get("agent_ayurvedic")) payload.agents.push("ayurvedic");
+      if (form.get("agent_allopathic")) payload.agents.push("allopathic");
+      if (form.get("agent_homeopathic")) payload.agents.push("homeopathic");
+
+      if (!payload.symptoms || payload.agents.length === 0) {
+        toast("Please add symptoms and choose at least one agent", "error");
+        return;
+      }
+
+      analyzeBtn.disabled = true;
+      analyzeBtn.textContent = "Analyzing...";
+      resultsContainer.innerHTML = "";
+      toast("Saving and analyzing...");
+
+      try {
+        // Save the request to Firestore (collection 'analyses')
+        const analysesRef = collection(db, "analyses");
+        const docRef = await addDoc(analysesRef, {
+          userId: payload.userId,
+          form: payload,
+          agents: payload.agents,
+          status: "queued",
+          createdAt: serverTimestamp()
+        });
+        lastAnalysisId = docRef.id;
+
+        // Mock results for demo (replace with actual API call)
+        // In production, call your backend: POST /api/analyze
+        const mockResults = {};
+        for (const agent of payload.agents) {
+          mockResults[agent] = `${agent.charAt(0).toUpperCase() + agent.slice(1)} Analysis:\n\nBased on the symptoms described (${payload.symptoms}), here is a preliminary assessment. This is a demo response. In production, this would be generated by AI analyzing your symptoms in detail.\n\nRecommendations:\n- Consult with a healthcare professional\n- Monitor symptoms closely\n- Stay hydrated and rest\n\nNote: This is for informational purposes only and not medical advice.`;
+        }
+
+        // Save results back to Firestore
+        await setDoc(doc(db, "analyses", docRef.id), {
+          results: mockResults, 
+          status: "done", 
+          completedAt: serverTimestamp()
+        }, { merge: true });
+
+        // Render agents in UI with typewriter effect
+        for (const agent of payload.agents) {
+          const text = mockResults[agent] || "(no answer)";
+          renderAgentResult(agent, text);
+        }
+
+        // Update analyses list + chart
+        await loadAnalysesAndChart();
+
+        // show continue-chat button
+        continueChatBtn.dataset.analysisId = docRef.id;
+        continueChatBtn.classList.remove("hidden");
+
+        toast("Analysis complete", "success");
+      } catch (err) {
+        console.error(err);
+        toast("Analysis failed: " + err.message, "error");
+      } finally {
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = "Analyze";
+      }
+    });
+
+    // Load recent analyses and build chart
+    window.loadAnalysesAndChart = async function() {
+      if (!currentUser) return;
+
+      try {
+        const analysesRef = collection(db, "analyses");
+        const q = query(analysesRef, where("userId","==",currentUser.uid), orderBy("createdAt","desc"), limit(12));
+        const snaps = await getDocs(q);
+        const items = [];
+        snaps.forEach(s => {
+          const d = s.data();
+          d.id = s.id;
+          items.push(d);
+        });
+
+        // Build analyses list
+        analysesList.innerHTML = "";
+        if (items.length === 0) {
+          analysesList.innerHTML = '<div class="p-3 text-sm text-gray-500 italic">No analyses yet</div>';
+        } else {
+          for (const a of items) {
+            const li = document.createElement("div");
+            li.className = "p-3 border-b hover:bg-gray-50 cursor-pointer";
+            const dateStr = a.createdAt?.seconds ? new Date(a.createdAt.seconds*1000).toLocaleString() : "Recent";
+            li.innerHTML = `<div class="text-sm text-gray-700">${dateStr}</div>
+                            <div class="text-xs text-gray-500">${a.form?.symptoms?.slice(0,60) || "No symptoms"}</div>`;
+            li.addEventListener("click", ()=>{
+              resultsContainer.innerHTML = "";
+              if (a.results) {
+                for (const k of Object.keys(a.results)) {
+                  renderAgentResult(k, a.results[k]);
+                }
+              } else {
+                resultsContainer.innerHTML = `<div class="p-6 text-gray-600">No results yet for this analysis.</div>`;
+              }
+            });
+            analysesList.appendChild(li);
+          }
+        }
+
+        // Build chart
+        const labels = [];
+        const dataPoints = [];
+        const reversedItems = [...items].reverse();
+        reversedItems.forEach(it => {
+          const ts = it.createdAt?.seconds ? new Date(it.createdAt.seconds * 1000) : new Date();
+          labels.push(ts.toLocaleDateString());
+          const sev = Number(it.form?.severity) || 5;
+          dataPoints.push(sev);
+        });
+
+        if (chartCanvas) {
+          if (chartCanvas._chart) chartCanvas._chart.destroy();
+          chartCanvas._chart = new Chart(chartCanvas.getContext("2d"), {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [{
+                label: "Severity over time",
+                data: dataPoints,
+                borderColor: "rgba(14,165,233,0.9)",
+                backgroundColor: "rgba(16,185,129,0.12)",
+                tension: 0.3,
+                fill: true
+              }]
+            },
+            options: {
+              responsive: true,
+              plugins: { legend: { display: false } },
+              scales: {
+                y: { suggestedMin: 0, suggestedMax: 10 }
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.error("error loading analyses", err);
+        toast("Error loading history: " + err.message, "error");
+      }
+    };
+
+   // Renders agent result with typewriter effect + continue chat button
+function renderAgentResult(agent, text) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "mb-6 bg-white p-6 rounded-xl shadow relative";
+  
+  const title = document.createElement("div");
+  title.className = "text-lg font-semibold mb-3 text-blue-700";
+  title.textContent = agent.charAt(0).toUpperCase() + agent.slice(1);
+
+  const content = document.createElement("div");
+  content.className = "typewriter text-gray-700 mb-4";
+
+  // Continue Chat button (hidden until text fully renders)
+  const chatBtn = document.createElement("button");
+  chatBtn.className = "hidden bg-gradient-to-r from-blue-600 to-green-500 text-white px-4 py-2 rounded-lg shadow hover:from-blue-700 hover:to-green-600 transition";
+  chatBtn.textContent = "💬 Continue Chat";
+
+  // Append all elements
+  wrapper.appendChild(title);
+  wrapper.appendChild(content);
+  wrapper.appendChild(chatBtn);
+  resultsContainer.appendChild(wrapper);
+
+  // typewriter animation
+  let i = 0;
+  const speed = 15;
+  const writer = () => {
+    if (i <= text.length) {
+      content.textContent = text.slice(0, i);
+      i++;
+      setTimeout(writer, speed);
+    } else {
+      chatBtn.classList.remove("hidden"); // show after animation completes
+    }
+  };
+  writer();
+
+  // Event listener for Continue Chat
+  chatBtn.addEventListener("click", () => {
+    const aid = lastAnalysisId;
+    if (!aid) return toast("No analysis found to continue.", "error");
+    chatModal.classList.remove("hidden");
+    chatModal.dataset.analysisId = aid;
+    chatArea.innerHTML = `<div class="text-sm italic text-gray-500 mb-2">Chat about your ${agent} analysis</div>`;
+  });
+}
+
+
+    // Continue chat
+    continueChatBtn.addEventListener("click", () => {
+      const aid = continueChatBtn.dataset.analysisId;
+      if (!aid) return toast("No analysis to continue", "error");
+      chatModal.classList.remove("hidden");
+      chatModal.dataset.analysisId = aid;
+      chatArea.innerHTML = `<div class="text-sm italic text-gray-500 mb-2">Start chatting about your last analysis</div>`;
+    });
+
+    // Chat send handler
+    document.getElementById("chatSendBtn").addEventListener("click", async () => {
+      const msg = chatInput.value.trim();
+      if (!msg) return;
+      chatArea.innerHTML += `<div class="text-sm text-right text-blue-700 mb-2"><strong>You:</strong> ${escapeHtml(msg)}</div>`;
+      chatInput.value = "";
+      
+      // Mock reply (replace with actual API call)
+      const reply = "Thank you for your question. This is a demo response. In production, this would connect to your AI backend.";
+      const replyDiv = document.createElement("div");
+      replyDiv.className = "text-sm text-left text-gray-800 mb-4";
+      replyDiv.innerHTML = `<strong>RoboDoc:</strong> ${reply}`;
+      chatArea.appendChild(replyDiv);
+      chatArea.scrollTop = chatArea.scrollHeight;
+    });
+
+    // close chat
+    document.getElementById("chatCloseBtn").addEventListener("click", ()=> {
+      chatModal.classList.add("hidden");
+    });
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));
+    }
+  });
+
+   const pricePerCoin = 1; // 1 Coin = ₹1
+const coinsInput = document.getElementById('customCoins');
+const priceSpan = document.getElementById('customPrice');
+const buyCustomBtn = document.getElementById('buyCustomBtn');
+const coinBalanceSpan = document.getElementById('coinBalance');
+
+// --- Update custom price dynamically ---
+coinsInput.addEventListener('input', () => {
+  let coins = Math.max(10, Math.round(Number(coinsInput.value) / 10) * 10);
+  coinsInput.value = coins;
+  priceSpan.textContent = (coins * pricePerCoin).toFixed(0);
+});
+
+// --- Update UI balance safely ---
+function updateBalanceUI(balance) {
+  coinBalanceSpan.textContent = balance;
+  window.__COINS__ = balance;
+  const analyzeBtn = document.getElementById("analyzeBtn");
+  if (analyzeBtn) analyzeBtn.disabled = balance < 10;
+}
+
+// --- Start Razorpay flow ---
+async function startPurchase(coins, amountINR) {
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) return alert('Login first, chief.');
+
+    const orderRes = await fetch('/api/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid: user.uid, coins, amount: amountINR })
+    });
+    const orderData = await orderRes.json();
+    if (!orderData?.id) throw new Error(orderData.error || "Order creation failed");
+
+    const options = {
+      key: orderData.key,
+      amount: orderData.amount,
+      currency: orderData.currency,
+      name: 'RoboDoc Coins',
+      description: `${coins} Coins Recharge`,
+      order_id: orderData.id,
+      handler: async function (response) {
+        const verify = await fetch('/api/verify-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: user.uid, coins, ...response })
+        });
+        const vjson = await verify.json();
+        if (vjson.success) {
+          alert(`Payment successful ✅\nNew balance: ${vjson.newBalance} coins`);
+          updateBalanceUI(vjson.newBalance);
+        } else {
+          alert(`Payment verification failed: ${vjson.message || 'Unknown error'}`);
+        }
+      },
+      prefill: { email: user.email, name: user.displayName || 'RoboDoc User' },
+      theme: { color: '#2563eb' }
+    };
+
+    new Razorpay(options).open();
+  } catch (err) {
+    console.error(err);
+    alert('⚠️ Payment failed: ' + err.message);
+  }
+}
+
+// --- Fetch balance on login ---
+onAuthStateChanged(getAuth(), async (user) => {
+  if (!user) return;
+  try {
+    const res = await fetch(`/api/get-balance?uid=${encodeURIComponent(user.uid)}`);
+    const data = await res.json();
+    updateBalanceUI(typeof data.coins === 'number' ? data.coins : 0);
+  } catch {
+    updateBalanceUI(0);
+  }
+});
+
+// --- Custom buy ---
+buyCustomBtn.addEventListener('click', async () => {
+  const coins = Number(coinsInput.value);
+  if (!coins || coins % 10 !== 0) return alert('Enter coins in multiples of 10');
+  await startPurchase(coins, coins * pricePerCoin);
+});
+
+// --- Quick packs ---
+document.querySelectorAll('.buy-fixed').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const coins = Number(btn.dataset.coins);
+    const price = Number(btn.dataset.price);
+    await startPurchase(coins, price);
+  });
+});
+</script>
+
+<!-- PAGE LAYOUT -->
+<div class="flex min-h-screen">
+<!-- SIDEBAR -->
+<aside class="sidebar hidden md:flex flex-col bg-white/80 backdrop-blur-md border-r border-gray-100 shadow-lg w-56 transition-all duration-300 hover:w-60">
+  <div class="p-5 flex flex-col justify-between h-full">
+    <!-- Profile Section -->
+    <div>
+      <div class="flex items-center gap-3 mb-8">
+        <div id="userPhoto" class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center text-white font-bold overflow-hidden">
+          <img id="userAvatar" class="w-full h-full object-cover hidden" alt="User Avatar">
+          <span id="userInitial" class="text-lg font-bold">R</span>
+        </div>
+        <div class="overflow-hidden">
+          <div id="username" class="font-bold text-blue-700 truncate">User</div>
+          <div id="userEmail" class="text-xs text-gray-500 truncate">email@example.com</div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="space-y-2">
+        <button class="nav-btn w-full text-left px-4 py-2.5 rounded-lg text-gray-700 font-medium hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 hover:text-blue-700 transition-all duration-200" data-section="dashboard">Overview</button>
+     
+        <button class="nav-btn w-full text-left px-4 py-2.5 rounded-lg text-gray-700 font-medium hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 hover:text-blue-700 transition-all duration-200" data-section="tools">Tools</button>
+        <button class="nav-btn w-full text-left px-4 py-2.5 rounded-lg text-gray-700 font-medium hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 hover:text-blue-700 transition-all duration-200" data-section="history">History</button>
+        <button class="nav-btn w-full text-left px-4 py-2.5 rounded-lg text-gray-700 font-medium hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 hover:text-blue-700 transition-all duration-200" data-section="settings">Settings</button>
+        <button class="nav-btn w-full text-left px-4 py-2.5 rounded-lg text-gray-700 font-medium hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 hover:text-blue-700 transition-all duration-200" data-section="pricing">
+  Pricing
+</button>
+
+      </nav>
+    </div>
+
+    <!-- Logout Button -->
+    <div class="mt-8">
+      <button id="logoutBtn" class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white py-2.5 rounded-lg font-semibold hover:from-red-600 hover:to-pink-600 shadow-md transition-all duration-200">
+        Log Out
+      </button>
+    </div>
+  </div>
+</aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 p-6">
+    <header class="flex items-center justify-between mb-6">
+      <h1 class="text-3xl font-extrabold text-blue-800">Welcome Back, <span id="usernameHeader">User</span>!</h1>
+      <div class="flex items-center gap-4">
+        <button id="continueChatBtn" class="hidden bg-indigo-600 text-white px-4 py-2 rounded">Continue Chat</button>
+      </div>
+    </header>
+
+    <section id="dashboard" class="mb-10">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Left: Analyzer Form -->
+    <div class="col-span-2 bg-white/90 backdrop-blur-sm p-8 rounded-2xl shadow-lg border border-gray-100 transition hover:shadow-xl">
+      <h2 class="text-2xl font-bold mb-6 text-blue-800 tracking-tight">Symptom Analyzer</h2>
+
+      <!-- Analyze Form -->
+      <form id="symptomForm" class="space-y-5">
+        <!-- Row 1 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <input name="name" placeholder="Full Name" class="p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition" required />
+          <input name="age" type="number" placeholder="Age" class="p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition" required />
+          <select name="gender" class="p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition">
+            <option value="" disabled selected hidden>Gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <!-- Row 2 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input name="weight" placeholder="Weight (kg)" class="p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent transition" />
+          <input name="height" placeholder="Height (cm)" class="p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent transition" />
+        </div>
+
+        <!-- Symptoms -->
+        <textarea name="symptoms" placeholder="Describe your symptoms in detail..." class="w-full p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition" rows="4" required></textarea>
+
+      <div class="space-y-4">
+  <div class="flex flex-col sm:flex-row items-center sm:items-end justify-between gap-6">
+    <div class="flex flex-col flex-1">
+      <label for="severitySlider" class="text-gray-700 font-medium mb-2">Severity Level</label>
+      <div class="flex items-center gap-3">
+        <input 
+          id="severitySlider"
+          name="severity"
+          type="range"
+          min="1"
+          max="10"
+          value="5"
+          class="flex-1 appearance-none h-2 bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 rounded-lg cursor-pointer accent-blue-600"
+        />
+        <span id="severityValue" class="w-8 text-center text-lg font-semibold text-blue-700">5</span>
+      </div>
+    </div>
+    
+    <input 
+      name="details"
+      placeholder="Additional details (medical history, medications, etc.)"
+      class="p-3 border border-gray-200 rounded-lg flex-1 focus:ring-2 focus:ring-green-400 focus:border-transparent transition w-full sm:w-auto"
+    />
+  </div>
+</div>
+
+        <!-- Agents -->
+        <div id="agentsContainer" class="flex flex-wrap gap-4 mt-2">
+          <label class="flex items-center gap-2 text-gray-700 font-medium">
+            <input type="checkbox" name="agent_ayurvedic" class="rounded text-blue-600 focus:ring-blue-400" />
+            Ayurvedic
+          </label>
+          <label class="flex items-center gap-2 text-gray-700 font-medium">
+            <input type="checkbox" name="agent_allopathic" class="rounded text-blue-600 focus:ring-blue-400" />
+            Allopathic
+          </label>
+          <label class="flex items-center gap-2 text-gray-700 font-medium">
+            <input type="checkbox" name="agent_homeopathic" class="rounded text-blue-600 focus:ring-blue-400" />
+            Homeopathic
+          </label>
+        </div>
+
+        <!-- Buttons -->
+        <div class="mt-6 flex gap-4 flex-wrap">
+          <button id="analyzeBtn" type="button" class="bg-gradient-to-r from-blue-600 to-green-500 text-white px-8 py-3 rounded-lg font-semibold shadow-md hover:from-blue-700 hover:to-green-600 transform hover:-translate-y-0.5 transition">
+            Analyze
+          </button>
+          <button type="reset" class="px-8 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium text-gray-700 transition">
+            Reset
+          </button>
+        </div>
+      </form>
+
+      <!-- Results -->
+      <div id="resultsContainer" class="mt-8 space-y-6"></div>
+    </div>
+
+    <!-- Right: Stats and Tools -->
+    <aside class="space-y-6">
+      <!-- Stats -->
+      <div class="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow border border-gray-100 hover:shadow-md transition">
+        <h3 class="text-lg font-semibold text-blue-700 mb-3">Quick Health Stats</h3>
+        <canvas id="healthChart" height="160"></canvas>
+      </div>
+
+      <!-- Recent Analyses -->
+      <div class="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow border border-gray-100 hover:shadow-md transition">
+        <h3 class="text-lg font-semibold text-blue-700 mb-3">Recent Analyses</h3>
+        <div id="analysesList" class="max-h-64 overflow-auto text-sm text-gray-700"></div>
+      </div>
+
+      <!-- Tools -->
+      <div class="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow border border-gray-100 hover:shadow-md transition">
+        <h3 class="text-lg font-semibold text-blue-700 mb-3">Smart Tools</h3>
+        <ul class="text-sm text-gray-600 space-y-2">
+          <li class="hover:text-blue-700 transition">AI Nutritionist</li>
+          <li class="hover:text-blue-700 transition">AI Chef (Recipes)</li>
+          <li class="hover:text-blue-700 transition">Exercise Planner</li>
+          <li class="hover:text-blue-700 transition">Diet Recommendations</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</section>
+
+
+    <section id="tools" class="hidden">
+      <div class="bg-white p-6 rounded-xl shadow">
+        <h2 class="text-xl font-semibold mb-4">Tools</h2>
+        <p class="text-gray-600">Additional tools coming soon...</p>
+      </div>
+    </section>
+
+    <section id="history" class="hidden p-4">
+      <div class="bg-white p-6 rounded-xl shadow">
+        <h2 class="text-xl font-semibold mb-4">Health Summary</h2>
+        <div id="healthSummary" class="text-gray-700">
+          <p class="italic text-gray-500">No summary yet. Run some analyses first.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="settings" class="hidden p-4">
+      <div class="bg-white p-6 rounded-xl shadow">
+        <h2 class="text-xl font-semibold mb-4">Settings</h2>
+        <p class="text-gray-600">Profile and app settings will go here.</p>
+      </div>
+    </section>
+
+<section id="pricing" class="hidden p-6">
+  <div class="bg-white/90 backdrop-blur-md p-8 rounded-2xl shadow-lg border border-gray-100 max-w-4xl mx-auto transition hover:shadow-xl">
+    
+    <!-- Wallet Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+      <div>
+        <h2 class="text-3xl font-extrabold text-blue-800">My Wallet</h2>
+        <p class="text-gray-500 text-sm mt-1">Manage your coins & recharge instantly</p>
+      </div>
+      <div class="mt-4 sm:mt-0">
+        <div class="text-lg font-semibold text-gray-700">
+          Current Balance: 
+          <span id="coinBalance" class="text-blue-600 font-bold ml-1">—</span> coins
+        </div>
+      </div>
+    </div>
+
+    <!-- Coin Purchase Options -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      
+      <!-- Custom Recharge -->
+      <div class="bg-gradient-to-br from-blue-50 to-green-50 border border-gray-200 rounded-xl p-6 shadow hover:shadow-md transition">
+        <h3 class="text-xl font-semibold text-blue-700 mb-4">Buy Custom Amount</h3>
+
+        <div class="flex flex-col gap-4">
+          <div>
+            <label class="text-sm text-gray-600">Enter coins (multiple of 10)</label>
+            <input 
+              id="customCoins"
+              type="number"
+              value="50"
+              min="10"
+              step="10"
+              class="mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 w-full"
+            />
+          </div>
+
+          <div class="text-gray-700 text-sm">
+            Price: 
+            <span class="font-semibold text-green-600">₹<span id="customPrice">50</span></span>
+          </div>
+
+          <button 
+            id="buyCustomBtn"
+            class="bg-gradient-to-r from-blue-600 to-green-500 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-green-600 shadow-md transition-all"
+          >
+            Buy Coins
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Packs -->
+      <div class="bg-gradient-to-br from-white to-blue-50 border border-gray-200 rounded-xl p-6 shadow hover:shadow-md transition">
+        <h3 class="text-xl font-semibold text-blue-700 mb-4">Quick Recharge</h3>
+        
+        <div class="space-y-3">
+          <button class="buy-fixed w-full text-left px-5 py-3 border rounded-lg hover:bg-blue-50 transition" data-coins="100" data-price="100">
+            <div class="flex justify-between items-center">
+              <span class="font-semibold text-gray-700">100 Coins</span>
+              <span class="text-blue-700 font-bold">₹100</span>
+            </div>
+          </button>
+          <button class="buy-fixed w-full text-left px-5 py-3 border rounded-lg hover:bg-blue-50 transition" data-coins="250" data-price="250">
+            <div class="flex justify-between items-center">
+              <span class="font-semibold text-gray-700">250 Coins</span>
+              <span class="text-blue-700 font-bold">₹250</span>
+            </div>
+          </button>
+          <button class="buy-fixed w-full text-left px-5 py-3 border rounded-lg hover:bg-blue-50 transition" data-coins="500" data-price="500">
+            <div class="flex justify-between items-center">
+              <span class="font-semibold text-gray-700">500 Coins</span>
+              <span class="text-blue-700 font-bold">₹500</span>
+            </div>
+          </button>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-4">1 Analyze = 10 coins • 1 Chat Message = 1 coin</p>
+      </div>
+    </div>
+
+    <!-- Info Banner -->
+    <div class="mt-8 bg-gradient-to-r from-blue-600 to-green-500 text-white py-4 px-6 rounded-xl shadow flex flex-col sm:flex-row items-center justify-between gap-2">
+      <span class="font-medium">Pay only for what you use</span>
+      <span class="text-sm opacity-90">No subscriptions, no renewals — just coins.</span>
+    </div>
+  </div>
+</section>
+
+
+
+
+  </main>
+</div>
+
+<!-- CHAT MODAL -->
+<div id="chatModal" class="hidden fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+  <div class="bg-white rounded-xl w-full max-w-xl p-6 shadow-lg">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold">RoboDoc Chat</h3>
+      <button id="chatCloseBtn" class="text-sm text-gray-500 hover:text-gray-700">Close</button>
+    </div>
+    <div id="chatArea" class="h-64 overflow-auto p-3 bg-gray-50 rounded mb-3"></div>
+    <div class="flex gap-2">
+      <input id="chatInput" class="flex-1 p-2 border rounded" placeholder="Ask follow-up question..." />
+      <button id="chatSendBtn" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // Grab *all* sidebar nav buttons, no matter what container padding class it has
+    const navButtons = document.querySelectorAll("aside nav button");
+    const sections = ["dashboard", "tools", "history", "settings", "pricing"];
+
+
+    navButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetSection = btn.dataset.section;
+
+        // Hide all sections except the clicked one
+        sections.forEach((section) => {
+          const el = document.getElementById(section);
+          if (!el) return;
+          el.classList.toggle("hidden", section !== targetSection);
+        });
+
+        // Active state highlight
+        navButtons.forEach(b => b.classList.remove("bg-gradient-to-r", "from-blue-50", "to-green-50", "text-blue-700", "font-semibold", "shadow-sm"));
+        btn.classList.add("bg-gradient-to-r", "from-blue-50", "to-green-50", "text-blue-700", "font-semibold", "shadow-sm");
+
+        // Smooth scroll to top of content
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    });
+  })();
+
+  // Live severity slider value update
+  document.addEventListener("DOMContentLoaded", () => {
+    const slider = document.getElementById("severitySlider");
+    const valueDisplay = document.getElementById("severityValue");
+
+    if (slider && valueDisplay) {
+      slider.addEventListener("input", () => {
+        valueDisplay.textContent = slider.value;
+
+        // Dynamically change color based on severity
+        const val = parseInt(slider.value);
+        let color = "text-green-600";
+        if (val > 3 && val <= 6) color = "text-yellow-600";
+        if (val > 6) color = "text-red-600";
+
+        valueDisplay.className = `w-8 text-center text-lg font-semibold ${color}`;
+      });
+    }
+  });
+</script>
+
+
+</body>
+</html>

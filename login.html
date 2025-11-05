@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — RoboDoc</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+  import {
+    getAuth,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup,
+    sendPasswordResetEmail,
+    onAuthStateChanged,
+  } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
+  import {
+    getFirestore,
+    doc,
+    setDoc,
+    serverTimestamp,
+  } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+
+  // 🔥 Your Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyBAsbvZbtA5dgk_fFMqVI2j4kBckp6n62c",
+    authDomain: "robodoc-db1d3.firebaseapp.com",
+    projectId: "robodoc-db1d3",
+    storageBucket: "robodoc-db1d3.firebasestorage.app",
+    messagingSenderId: "886593524703",
+    appId: "1:886593524703:web:5b8e2c82959aa632ba6a6a",
+  };
+
+  // 🔧 Initialize
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  // Track if we're in the middle of a login action
+  let isLoggingIn = false;
+
+  // 🔔 Toast function
+  function showToast(msg, type = "info") {
+    const t = document.createElement("div");
+    t.className = `fixed top-5 right-5 px-5 py-3 rounded-xl text-white font-medium shadow-lg z-50 transition-all ${
+      type === "success"
+        ? "bg-green-500"
+        : type === "error"
+        ? "bg-red-500"
+        : "bg-blue-500"
+    }`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  }
+
+  // 🔐 Auth state listener - redirect if already logged in
+  onAuthStateChanged(auth, (user) => {
+    // Only redirect if user exists AND we're not in the middle of logging in
+    if (user && !isLoggingIn) {
+      window.location.replace("dashboard.html");
+    }
+  });
+
+  // 🧠 Wait for DOM
+  document.addEventListener("DOMContentLoaded", () => {
+    const loginBtn = document.querySelector(".form:nth-child(1) button:first-of-type");
+    const signupBtn = document.querySelector(".form:nth-child(2) button:first-of-type");
+    const googleBtns = document.querySelectorAll(".google-btn");
+    const forgot = document.querySelector(".smalllink a");
+
+    // 🟢 LOGIN
+    loginBtn.addEventListener("click", async () => {
+      const email = document.querySelector(".form:nth-child(1) input[type='email']").value.trim();
+      const pass = document.querySelector(".form:nth-child(1) input[type='password']").value.trim();
+      if (!email || !pass) return showToast("Please fill all fields", "error");
+      
+      isLoggingIn = true;
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        showToast("Logged in successfully ✅", "success");
+        await new Promise(r => setTimeout(r, 500));
+        window.location.replace("dashboard.html");
+      } catch (err) {
+        showToast(err.message, "error");
+        isLoggingIn = false;
+      }
+    });
+
+    // 🆕 SIGN UP (saves username)
+    signupBtn.addEventListener("click", async () => {
+      const signupForm = document.querySelector(".forms .form:nth-child(2)");
+      const name = signupForm.querySelector("input[type='text']").value.trim();
+      const email = signupForm.querySelector("input[type='email']").value.trim();
+      const pass = signupForm.querySelector("input[type='password']").value.trim();
+
+      if (!name || !email || !pass)
+        return showToast("All fields are required", "error");
+
+      isLoggingIn = true;
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+        const user = userCredential.user;
+
+        // (in your login/signup backend or client after createUserWithEmailAndPassword)
+await setDoc(doc(db, "user", user.uid), {
+  name: name,
+  email: email,
+  coins: 50,
+  createdAt: serverTimestamp(),
+}, { merge: true });
+
+
+        showToast("Account created successfully 🎉", "success");
+        await new Promise(r => setTimeout(r, 500));
+        window.location.replace("dashboard.html");
+      } catch (err) {
+        showToast(err.message, "error");
+        isLoggingIn = false;
+      }
+    });
+// 🔵 GOOGLE SIGN IN (final version with random avatar)
+googleBtns.forEach((btn) =>
+  btn.addEventListener("click", async () => {
+    try {
+      // 🔧 Always show account chooser + request full profile data
+      provider.setCustomParameters({ prompt: "select_account" });
+      provider.addScope("profile");
+      provider.addScope("email");
+
+      // 🧹 Clear cached credentials to prevent auto-login
+      localStorage.clear();
+      sessionStorage.clear();
+      await auth.signOut();
+
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // 🧠 Handle missing profile picture
+      let photoURL = user.photoURL;
+      if (!photoURL && user.providerData?.length > 0) {
+        const g = user.providerData.find((p) => p.providerId === "google.com");
+        if (g && g.photoURL) photoURL = g.photoURL + "?sz=200";
+      }
+
+      // 🎨 If still no photoURL, generate a random avatar using DiceBear
+      if (!photoURL) {
+        const seed =
+          user.displayName?.replace(/\s+/g, "") ||
+          user.email?.split("@")[0] ||
+          user.uid;
+        // You can swap 'adventurer' with 'bottts', 'fun-emoji', etc.
+        photoURL = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(
+          seed
+        )}`;
+      }
+
+      // 💾 Save user info in Firestore under 'user' collection
+      await setDoc(
+        doc(db, "user", user.uid),
+        {
+          name: user.displayName || "User",
+          email: user.email,
+          photoURL,
+          createdAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      showToast("Signed in with Google ✅", "success");
+      setTimeout(() => (window.location.href = "dashboard.html"), 1000);
+    } catch (err) {
+      console.error(err);
+      showToast(err.message, "error");
+    }
+  })
+);
+
+    // 🔄 FORGOT PASSWORD
+    forgot.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const email = document.querySelector(".form:nth-child(1) input[type='email']").value.trim();
+      if (!email) return showToast("Enter your email first 📧", "error");
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showToast("Reset email sent ✅", "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
+</script>
+
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #e0f2ff, #e6fffa);
+      margin: 0;
+      height: 100vh;
+      display: flex;
+    }
+
+    /* LEFT PANEL */
+    .left-panel {
+      flex: 1.2;
+      background: linear-gradient(135deg, #0ea5e9, #10b981);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .left-panel::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url('https://www.transparenttextures.com/patterns/cubes.png');
+      opacity: 0.08;
+    }
+
+    .right-panel {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(10px);
+    }
+
+    /* AUTH BOX */
+    .auth-box {
+      width: 420px;
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .tabs {
+      display: flex;
+      position: relative;
+      background: #e0f2fe;
+      border-radius: 40px;
+      width: 85%;
+      margin: 1rem auto;
+      height: 48px;
+      cursor: pointer;
+    }
+
+    .tab {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2;
+      font-weight: 600;
+      color: #0369a1;
+      transition: color 0.3s;
+    }
+
+    .tab.active {
+      color: #fff;
+    }
+
+    .indicator {
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      width: 50%;
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      border-radius: 40px;
+      transition: transform 0.3s ease;
+      z-index: 1;
+    }
+
+    .auth-box.signup .indicator {
+      transform: translateX(100%);
+    }
+
+    .forms {
+      display: flex;
+      width: 200%;
+      transition: transform 0.5s ease;
+    }
+
+    .auth-box.signup .forms {
+      transform: translateX(-50%);
+    }
+
+    .form {
+      width: 50%;
+      padding: 2rem;
+      box-sizing: border-box;
+    }
+
+    .form h1 {
+      color: #075985;
+      text-align: center;
+      margin-bottom: 1.2rem;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.8rem;
+      border: 1px solid #cfe7f9;
+      border-radius: 10px;
+      outline: none;
+      transition: 0.3s;
+    }
+
+    input:focus {
+      border-color: #0ea5e9;
+      box-shadow: 0 0 6px rgba(14, 165, 233, 0.3);
+    }
+
+    button {
+      width: 100%;
+      padding: 0.9rem;
+      background: linear-gradient(135deg, #0ea5e9, #10b981);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      margin-top: 0.7rem;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+    }
+
+    .smalllink {
+      text-align: center;
+      margin-top: 0.7rem;
+      font-size: 0.9rem;
+    }
+
+    .smalllink a {
+      color: #0284c7;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .smalllink a:hover {
+      text-decoration: underline;
+    }
+
+    /* GOOGLE BUTTON */
+    .google-btn {
+      width: 100%;
+      margin-top: 0.7rem;
+      padding: 0.9rem;
+      border: 1px solid #cfd8dc;
+      border-radius: 12px;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-weight: 500;
+      transition: all 0.3s;
+      color: black;
+    }
+
+    .google-btn img {
+      width: 20px;
+      height: 20px;
+    }
+
+    .google-btn:hover {
+      background: #f8fafc;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      transform: translateY(-1px);
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+      .left-panel {
+        display: none;
+      }
+
+      body {
+        justify-content: center;
+        align-items: center;
+        background: linear-gradient(135deg, #e0f2ff, #e6fffa);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="relative z-10 text-center max-w-md">
+      <lottie-player
+        src="loginpage.json"
+        background="transparent"
+        speed="1"
+        style="width: 250px; height: 250px; margin: 0 auto;"
+        loop
+        autoplay
+      ></lottie-player>
+      <h1 class="text-4xl font-bold mb-4">Welcome to <span class="text-green-200">RoboDoc</span></h1>
+      <p class="text-blue-50 text-lg font-medium">
+        The future of healthcare is here.<br />
+        Get AI-powered medical insights anytime, anywhere.
+      </p>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="auth-box" id="authBox">
+      <div class="tabs">
+        <div class="indicator"></div>
+        <div class="tab active" id="tabLogin">Login</div>
+        <div class="tab" id="tabSignup">Sign Up</div>
+      </div>
+
+      <div class="forms">
+        <!-- LOGIN -->
+        <div class="form">
+          <h1>Login</h1>
+          <div class="mb-3"><input type="email" placeholder="Email" /></div>
+          <div class="mb-3"><input type="password" placeholder="Password" /></div>
+          <button>Continue</button>
+
+          <button class="google-btn">
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" />
+            Continue with Google
+          </button>
+
+          <div class="smalllink"><a href="#">Forgot password?</a></div>
+        </div>
+
+        <!-- SIGNUP -->
+        <div class="form">
+          <h1>Create Account</h1>
+          <div class="mb-3"><input type="text" placeholder="Full Name" /></div>
+          <div class="mb-3"><input type="email" placeholder="Email" /></div>
+          <div class="mb-3"><input type="password" placeholder="Password" /></div>
+          <button>Sign Up</button>
+
+          <button class="google-btn">
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" />
+            Sign up with Google
+          </button>
+
+          <div class="smalllink"><a href="#">Already have an account? Login</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const authBox = document.getElementById("authBox");
+    const tabLogin = document.getElementById("tabLogin");
+    const tabSignup = document.getElementById("tabSignup");
+
+    tabLogin.onclick = () => {
+      authBox.classList.remove("signup");
+      tabLogin.classList.add("active");
+      tabSignup.classList.remove("active");
+    };
+
+    tabSignup.onclick = () => {
+      authBox.classList.add("signup");
+      tabSignup.classList.add("active");
+      tabLogin.classList.remove("active");
+    };
+  </script>
+</body>
+</html>
