@@ -61,6 +61,8 @@ Respond in 3 clear sections:
 1️⃣ Possible medical conditions (common differentials)
 2️⃣ Recommended over-the-counter remedies or precautions
 3️⃣ When to seek urgent or emergency medical care
+
+Never Use these: #, *, and special symbols.
     `;
 
     // 🩺 OpenAI Chat Completion
@@ -89,3 +91,4 @@ Respond in 3 clear sections:
     res.status(500).json({ success: false, error: err.message });
   }
 }
+
