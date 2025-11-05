@@ -1,9 +1,18 @@
 import OpenAI from "openai";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import admin from "firebase-admin";
 
-if (!global._firebaseApp) {
-  global._firebaseApp = initializeApp({ projectId: "robodoc-db1d3" });
+if (!admin.apps.length) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+    console.log("🔥 Firebase Admin initialized successfully");
+  } catch (err) {
+    console.error("❌ Failed to initialize Firebase Admin:", err);
+  }
 }
 const db = getFirestore(global._firebaseApp);
 
@@ -71,3 +80,4 @@ Give the response in 3 parts:
     res.status(500).json({ error: err.message });
   }
 }
+
