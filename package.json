@@ -7,7 +7,8 @@
   },
   "dependencies": {
     "razorpay": "^2.9.6",
-    "firebase-admin": "^12.6.0",  
-    "dotenv": "^16.4.5"        
+    "firebase-admin": "^12.6.0",
+    "dotenv": "^16.4.5",
+    "openai": "^4.52.0"
   }
 }
