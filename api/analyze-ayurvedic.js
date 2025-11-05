@@ -1,51 +1,39 @@
 import OpenAI from "openai";
-import admin from "firebase-admin";
-import dotenv from "dotenv";
-dotenv.config();
+import { initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 
-// ✅ Firebase Admin Safe Init (Vercel-compatible)
-if (!admin.apps.length) {
-  try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    console.log("🔥 Firebase Admin initialized with service account (Ayurvedic)");
-  } catch (err) {
-    console.error("❌ Failed to initialize Firebase Admin:", err);
-  }
+if (!global._firebaseApp) {
+  global._firebaseApp = initializeApp({ projectId: "robodoc-db1d3" });
 }
+const db = getFirestore(global._firebaseApp);
 
-const db = admin.firestore();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ success: false, error: "Method Not Allowed" });
+  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
   try {
     const { uid, name, age, gender, symptoms, severity, details } = req.body;
-    if (!uid || !symptoms) return res.status(400).json({ success: false, error: "Missing fields" });
+    if (!uid || !symptoms) return res.status(400).json({ error: "Missing fields" });
 
-    // 🪙 Coin check
+    // Deduct coins
     const walletRef = db.collection("wallets").doc(uid);
     const walletSnap = await walletRef.get();
     const oldCoins = walletSnap.exists ? walletSnap.data().coins || 0 : 0;
+    // 🪙 Deduct coins (10 for first analysis, 1 for follow-ups)
+const cost = req.body.followUp ? 1 : 10;
 
-    if (oldCoins < 10)
-      return res.status(400).json({ success: false, error: "Not enough coins" });
+if (oldCoins < cost) return res.status(400).json({ error: "Not enough coins" });
 
-    await walletRef.update({
-      coins: oldCoins - 10,
-      lastTransaction: new Date().toISOString(),
-      source: "analyze-ayurvedic",
-    });
+await walletRef.update({
+  coins: oldCoins - cost,
+  lastTransaction: new Date().toISOString(),
+  source: req.body.followUp ? "chat-message" : "full-analysis",
+});
 
-    // 🧘 AI prompt
     const prompt = `
-You are an Ayurvedic AI Doctor. 
-Analyze this patient's symptoms using Ayurvedic principles — Dosha, Agni, Prakriti, and balance of elements.
-
-Patient Details:
+You are an Ayurvedic medical expert AI.
+Use Ayurvedic principles (Dosha, Agni, Prakriti, etc.) to analyze the patient's details:
 Name: ${name}
 Age: ${age}
 Gender: ${gender}
@@ -53,25 +41,23 @@ Symptoms: ${symptoms}
 Severity: ${severity}
 Extra Info: ${details || "None"}
 
-Respond with 3 clear sections:
-1️⃣ Likely Imbalances or Doshas (e.g. Vata-Pitta imbalance)
-2️⃣ Suggested Ayurvedic Remedies (home herbs, diet, lifestyle)
-3️⃣ When to consult an Ayurvedic practitioner
-
-Never use these: *, #, etc like special symbols.
+Give the response in 3 parts:
+1. Likely Imbalances or Doshas
+2. Suggested Ayurvedic Remedies (home treatments, herbs, diet)
+3. When to consult an Ayurvedic practitioner
 `;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: "You are a qualified Ayurvedic doctor AI. Always give safe, holistic suggestions." },
+        { role: "system", content: "You are a professional Ayurvedic AI doctor. Never give unsafe advice." },
         { role: "user", content: prompt },
       ],
     });
 
-    const result = completion.choices[0].message.content.trim();
+    const result = completion.choices[0].message.content;
 
-    await db.collection("analyses").add({
+    const docRef = await db.collection("analyses").add({
       userId: uid,
       agent: "ayurvedic",
       form: { name, age, gender, symptoms, severity, details },
@@ -79,9 +65,9 @@ Never use these: *, #, etc like special symbols.
       createdAt: new Date().toISOString(),
     });
 
-    res.status(200).json({ success: true, result });
+    res.status(200).json({ success: true, id: docRef.id, result });
   } catch (err) {
-    console.error("💥 Ayurvedic AI Error:", err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error("Ayurvedic AI Error:", err);
+    res.status(500).json({ error: err.message });
   }
 }
