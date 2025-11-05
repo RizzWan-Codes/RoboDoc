@@ -268,7 +268,8 @@ const promises = payload.agents.map(async (agent) => {
         gender: payload.gender,
         symptoms: payload.symptoms,
         severity: payload.severity,
-        details: payload.details
+        details: payload.details,
+      
       })
     });
 
@@ -502,19 +503,63 @@ function renderAgentResult(agent, text) {
 
     // Chat send handler
     document.getElementById("chatSendBtn").addEventListener("click", async () => {
-      const msg = chatInput.value.trim();
-      if (!msg) return;
-      chatArea.innerHTML += `<div class="text-sm text-right text-blue-700 mb-2"><strong>You:</strong> ${escapeHtml(msg)}</div>`;
-      chatInput.value = "";
-      
-      // Mock reply (replace with actual API call)
-      const reply = "Thank you for your question. This is a demo response. In production, this would connect to your AI backend.";
-      const replyDiv = document.createElement("div");
-      replyDiv.className = "text-sm text-left text-gray-800 mb-4";
-      replyDiv.innerHTML = `<strong>RoboDoc:</strong> ${reply}`;
-      chatArea.appendChild(replyDiv);
-      chatArea.scrollTop = chatArea.scrollHeight;
+  const msg = chatInput.value.trim();
+  if (!msg) return;
+
+  const agent = chatModal.dataset.agent || "allopathic"; // Default: allopathic
+  const analysisId = chatModal.dataset.analysisId || lastAnalysisId;
+
+  // Render your message
+  chatArea.innerHTML += `
+    <div class="text-right text-blue-700 font-medium mb-2">
+      You: ${escapeHtml(msg)}
+    </div>
+  `;
+  chatInput.value = "";
+  chatArea.scrollTop = chatArea.scrollHeight;
+
+  try {
+    // 💬 just send it to the SAME analyze endpoint again
+    const res = await fetch(`/api/analyze-${agent}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        uid: currentUser.uid,
+        name: "Follow-up",
+        symptoms: msg, // just use message as "symptom"
+        severity: 5,
+        gender: "N/A",
+        details: "",
+        followUp: true // ✅ KEEP this one
+      }),
     });
+
+    const data = await res.json();
+    if (data.success) {
+      chatArea.innerHTML += `
+        <div class="text-left text-gray-800 bg-gray-100 p-2 rounded-lg mb-2">
+          ${escapeHtml(data.result)}
+        </div>
+      `;
+    } else {
+      chatArea.innerHTML += `
+        <div class="text-left text-red-600 mb-2">
+          ⚠️ ${escapeHtml(data.error || "AI failed to respond")}
+        </div>
+      `;
+    }
+  } catch (err) {
+    console.error(err);
+    chatArea.innerHTML += `
+      <div class="text-left text-red-600 mb-2">
+        💥 ${escapeHtml(err.message)}
+      </div>
+    `;
+  }
+
+  chatArea.scrollTop = chatArea.scrollHeight;
+});
+
 
     // close chat
     document.getElementById("chatCloseBtn").addEventListener("click", ()=> {
