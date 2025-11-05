@@ -1,11 +1,20 @@
 import crypto from "crypto";
-import { initializeApp, applicationDefault } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import admin from "firebase-admin";
 
-if (!global._firebaseAdminApp) {
-  global._firebaseAdminApp = initializeApp({ projectId: "robodoc-db1d3" });
+// ✅ Initialize Firebase Admin (once)
+if (!admin.apps.length) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+    console.log("🔥 Firebase Admin initialized with service account");
+  } catch (err) {
+    console.error("❌ Failed to initialize Firebase Admin:", err);
+  }
 }
-const db = getFirestore(global._firebaseAdminApp);
+
+const db = admin.firestore();
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -15,31 +24,46 @@ export default async function handler(req, res) {
   try {
     const { uid, coins, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-    if (!uid || !coins || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
+    // ✅ Validate required fields
+    if (!uid || !coins || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
 
+    // ✅ Verify Razorpay signature
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(razorpay_order_id + "|" + razorpay_payment_id)
       .digest("hex");
 
     if (expectedSignature !== razorpay_signature) {
+      console.warn("⚠️ Invalid Razorpay Signature");
       return res.status(400).json({ success: false, message: "Invalid signature" });
     }
 
-    const userRef = db.collection("wallets").doc(uid);
-    const docSnap = await userRef.get();
-    const oldBalance = docSnap.exists ? docSnap.data().coins || 0 : 0;
+    // ✅ Update Firestore wallet balance
+    const walletRef = db.collection("wallets").doc(uid);
+    const walletSnap = await walletRef.get();
+    const oldBalance = walletSnap.exists ? walletSnap.data().coins || 0 : 0;
     const newBalance = oldBalance + Number(coins);
 
-    await userRef.set(
-      { coins: newBalance, lastTransaction: new Date().toISOString() },
+    await walletRef.set(
+      {
+        coins: newBalance,
+        lastTransaction: new Date().toISOString(),
+        lastPaymentId: razorpay_payment_id,
+        lastOrderId: razorpay_order_id,
+      },
       { merge: true }
     );
 
+    console.log(`✅ User ${uid} credited with ${coins} coins. New balance: ${newBalance}`);
+
     return res.status(200).json({ success: true, newBalance });
   } catch (err) {
-    console.error("Verify Error:", err);
-    return res.status(500).json({ success: false, message: err.message });
+    console.error("🔥 Verify-payment Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Internal Server Error",
+    });
   }
 }
