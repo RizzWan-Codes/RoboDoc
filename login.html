@@ -16,15 +16,17 @@
     signInWithPopup,
     sendPasswordResetEmail,
     onAuthStateChanged,
+    signOut,
   } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
   import {
     getFirestore,
     doc,
     setDoc,
+    getDoc,
     serverTimestamp,
   } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
-  // 🔥 Your Firebase config
+  // 🔥 Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyBAsbvZbtA5dgk_fFMqVI2j4kBckp6n62c",
     authDomain: "robodoc-db1d3.firebaseapp.com",
@@ -34,16 +36,15 @@
     appId: "1:886593524703:web:5b8e2c82959aa632ba6a6a",
   };
 
-  // 🔧 Initialize
+  // 🔧 Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
   const provider = new GoogleAuthProvider();
 
-  // Track if we're in the middle of a login action
   let isLoggingIn = false;
 
-  // 🔔 Toast function
+  // 🧃 Toast
   function showToast(msg, type = "info") {
     const t = document.createElement("div");
     t.className = `fixed top-5 right-5 px-5 py-3 rounded-xl text-white font-medium shadow-lg z-50 transition-all ${
@@ -58,32 +59,31 @@
     setTimeout(() => t.remove(), 3000);
   }
 
-  // 🔐 Auth state listener - redirect if already logged in
+  // 🔐 Redirect if already logged in
   onAuthStateChanged(auth, (user) => {
-    // Only redirect if user exists AND we're not in the middle of logging in
     if (user && !isLoggingIn) {
       window.location.replace("dashboard.html");
     }
   });
 
-  // 🧠 Wait for DOM
+  // 🧠 DOM Loaded
   document.addEventListener("DOMContentLoaded", () => {
     const loginBtn = document.querySelector(".form:nth-child(1) button:first-of-type");
     const signupBtn = document.querySelector(".form:nth-child(2) button:first-of-type");
     const googleBtns = document.querySelectorAll(".google-btn");
     const forgot = document.querySelector(".smalllink a");
 
-    // 🟢 LOGIN
+    // 🟢 LOGIN (Email + Password)
     loginBtn.addEventListener("click", async () => {
       const email = document.querySelector(".form:nth-child(1) input[type='email']").value.trim();
       const pass = document.querySelector(".form:nth-child(1) input[type='password']").value.trim();
       if (!email || !pass) return showToast("Please fill all fields", "error");
-      
+
       isLoggingIn = true;
       try {
         await signInWithEmailAndPassword(auth, email, pass);
         showToast("Logged in successfully ✅", "success");
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, 500));
         window.location.replace("dashboard.html");
       } catch (err) {
         showToast(err.message, "error");
@@ -91,100 +91,117 @@
       }
     });
 
-    // 🆕 SIGN UP (saves username)
+    // 🆕 SIGNUP (Email + Password)
     signupBtn.addEventListener("click", async () => {
       const signupForm = document.querySelector(".forms .form:nth-child(2)");
       const name = signupForm.querySelector("input[type='text']").value.trim();
       const email = signupForm.querySelector("input[type='email']").value.trim();
       const pass = signupForm.querySelector("input[type='password']").value.trim();
 
-      if (!name || !email || !pass)
-        return showToast("All fields are required", "error");
+      if (!name || !email || !pass) return showToast("All fields are required", "error");
 
       isLoggingIn = true;
       try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
         const user = userCredential.user;
 
-        // (in your login/signup backend or client after createUserWithEmailAndPassword)
-await setDoc(doc(db, "user", user.uid), {
-  name: name,
-  email: email,
-  coins: 50,
-  createdAt: serverTimestamp(),
-}, { merge: true });
+        // ✅ Save user info in Firestore
+        await setDoc(doc(db, "user", user.uid), {
+          name,
+          email,
+          createdAt: serverTimestamp(),
+        });
 
+        // 💰 Initialize wallet (50 coins)
+        await setDoc(doc(db, "wallets", user.uid), {
+          coins: 50,
+          lastTransaction: new Date().toISOString(),
+          source: "email_signup_bonus",
+        });
 
-        showToast("Account created successfully 🎉", "success");
-        await new Promise(r => setTimeout(r, 500));
+        console.log(`✅ Wallet created for ${user.uid} with 50 coins`);
+        showToast("Account created 🎉 You got 50 coins!", "success");
+        await new Promise((r) => setTimeout(r, 500));
         window.location.replace("dashboard.html");
       } catch (err) {
+        console.error("Signup Error:", err);
         showToast(err.message, "error");
         isLoggingIn = false;
       }
     });
-// 🔵 GOOGLE SIGN IN (final version with random avatar)
-googleBtns.forEach((btn) =>
-  btn.addEventListener("click", async () => {
-    try {
-      // 🔧 Always show account chooser + request full profile data
-      provider.setCustomParameters({ prompt: "select_account" });
-      provider.addScope("profile");
-      provider.addScope("email");
 
-      // 🧹 Clear cached credentials to prevent auto-login
-      localStorage.clear();
-      sessionStorage.clear();
-      await auth.signOut();
+    // 🔵 GOOGLE SIGN-IN
+    googleBtns.forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        try {
+          provider.setCustomParameters({ prompt: "select_account" });
+          provider.addScope("profile");
+          provider.addScope("email");
 
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
+          localStorage.clear();
+          sessionStorage.clear();
+          await signOut(auth);
 
-      // 🧠 Handle missing profile picture
-      let photoURL = user.photoURL;
-      if (!photoURL && user.providerData?.length > 0) {
-        const g = user.providerData.find((p) => p.providerId === "google.com");
-        if (g && g.photoURL) photoURL = g.photoURL + "?sz=200";
-      }
+          const result = await signInWithPopup(auth, provider);
+          const user = result.user;
 
-      // 🎨 If still no photoURL, generate a random avatar using DiceBear
-      if (!photoURL) {
-        const seed =
-          user.displayName?.replace(/\s+/g, "") ||
-          user.email?.split("@")[0] ||
-          user.uid;
-        // You can swap 'adventurer' with 'bottts', 'fun-emoji', etc.
-        photoURL = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(
-          seed
-        )}`;
-      }
+          // 🧠 Handle missing photo
+          let photoURL = user.photoURL;
+          if (!photoURL && user.providerData?.length > 0) {
+            const g = user.providerData.find((p) => p.providerId === "google.com");
+            if (g && g.photoURL) photoURL = g.photoURL + "?sz=200";
+          }
 
-      // 💾 Save user info in Firestore under 'user' collection
-      await setDoc(
-        doc(db, "user", user.uid),
-        {
-          name: user.displayName || "User",
-          email: user.email,
-          photoURL,
-          createdAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
+          if (!photoURL) {
+            const seed =
+              user.displayName?.replace(/\s+/g, "") ||
+              user.email?.split("@")[0] ||
+              user.uid;
+            photoURL = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}`;
+          }
 
-      showToast("Signed in with Google ✅", "success");
-      setTimeout(() => (window.location.href = "dashboard.html"), 1000);
-    } catch (err) {
-      console.error(err);
-      showToast(err.message, "error");
-    }
-  })
-);
+          // 💾 Save or update user doc
+          await setDoc(
+            doc(db, "user", user.uid),
+            {
+              name: user.displayName || "User",
+              email: user.email,
+              photoURL,
+              createdAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
 
-    // 🔄 FORGOT PASSWORD
+          // 💰 Check if wallet exists, else add 50 coins
+          const walletRef = doc(db, "wallets", user.uid);
+          const walletSnap = await getDoc(walletRef);
+
+          if (!walletSnap.exists()) {
+            await setDoc(walletRef, {
+              coins: 50,
+              lastTransaction: new Date().toISOString(),
+              source: "google_signup_bonus",
+            });
+            console.log(`💸 Wallet created for ${user.email} with 50 coins`);
+          } else {
+            console.log(`👛 Wallet already exists for ${user.email}`);
+          }
+
+          showToast("Signed in with Google ✅ 50 coins added!", "success");
+          setTimeout(() => (window.location.href = "dashboard.html"), 1000);
+        } catch (err) {
+          console.error("Google Sign-In Error:", err);
+          showToast(err.message, "error");
+        }
+      })
+    );
+
+    // 🔁 FORGOT PASSWORD
     forgot.addEventListener("click", async (e) => {
       e.preventDefault();
       const email = document.querySelector(".form:nth-child(1) input[type='email']").value.trim();
       if (!email) return showToast("Enter your email first 📧", "error");
+
       try {
         await sendPasswordResetEmail(auth, email);
         showToast("Reset email sent ✅", "success");
@@ -194,6 +211,7 @@ googleBtns.forEach((btn) =>
     });
   });
 </script>
+
 
   <style>
     body {
