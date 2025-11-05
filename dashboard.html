@@ -516,13 +516,29 @@ async function startPurchase(coins, amountINR) {
 }
 
 // --- Fetch balance on login ---
+// --- Fetch wallet balance from Firestore ---
 onAuthStateChanged(getAuth(), async (user) => {
   if (!user) return;
   try {
-    const res = await fetch(`/api/get-balance?uid=${encodeURIComponent(user.uid)}`);
-    const data = await res.json();
-    updateBalanceUI(typeof data.coins === 'number' ? data.coins : 0);
-  } catch {
+    const walletRef = doc(db, "wallets", user.uid);
+    const walletSnap = await getDoc(walletRef);
+
+    if (walletSnap.exists()) {
+      const walletData = walletSnap.data();
+      const coins = walletData.coins || 0;
+      updateBalanceUI(coins);
+      console.log(`💰 Wallet fetched: ${coins} coins`);
+    } else {
+      console.log("⚠️ No wallet found for user, creating one...");
+      await setDoc(walletRef, {
+        coins: 50,
+        lastTransaction: new Date().toISOString(),
+        source: "auto_wallet_create",
+      });
+      updateBalanceUI(50);
+    }
+  } catch (err) {
+    console.error("🔥 Error fetching wallet:", err);
     updateBalanceUI(0);
   }
 });
