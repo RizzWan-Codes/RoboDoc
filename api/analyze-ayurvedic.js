@@ -37,76 +37,79 @@ export default async function handler(req, res) {
     if (!uid || !symptoms)
       return res.status(400).json({ error: "Missing fields" });
 
-    // 💰 Wallet check and deduction
-    const walletRef = db.collection("wallets").doc(uid);
-    const walletSnap = await walletRef.get();
-    const oldCoins = walletSnap.exists ? walletSnap.data().coins || 0 : 0;
+    // 🚫 Removed wallet deduction (handled in dashboard)
+    // const walletRef = db.collection("wallets").doc(uid);
+    // const walletSnap = await walletRef.get();
+    // const oldCoins = walletSnap.exists ? walletSnap.data().coins || 0 : 0;
+    // const cost = followUp ? 1 : 10;
+    // if (oldCoins < cost) return res.status(400).json({ error: "Not enough coins" });
+    // await walletRef.update({ coins: oldCoins - cost });
 
-    const cost = followUp ? 1 : 10; // 1 for follow-ups, 10 for first-time analysis
-    
-    // 🧠 Smart prompt — remembers past response if follow-up
+    // 🧠 Smart prompt
     let prompt;
     if (followUp && lastResponse) {
       prompt = `
 You are continuing a follow-up Ayurvedic consultation.
 
-Previously, you said:
+Previously, you advised:
 "${lastResponse}"
 
-Now the patient asks:
+Now the patient says:
 "${symptoms}"
 
-Continue advising based on Ayurvedic reasoning (Dosha balance, diet, herbs, routine, etc.).
-Keep it short, clear, and context-aware.
+Continue naturally using Ayurvedic reasoning — focus on Dosha balance, diet, lifestyle, and herbs.
+Keep it concise, warm, and personalized.
 `;
     } else {
       prompt = `
-You are an Ayurvedic medical expert AI.
-Use Ayurvedic principles (Dosha, Agni, Prakriti, etc.) to analyze the patient's details:
-Name: ${name}
-Age: ${age}
-Gender: ${gender}
-Symptoms: ${symptoms}
-Severity: ${severity}
-Extra Info: ${details || "None"}
+You are an experienced Ayurvedic doctor AI.
+Analyze the patient's condition using traditional Ayurvedic principles such as Dosha imbalance, Agni, and Prakriti.
 
-Give the response in 3 parts:
-1. Likely Imbalances or Doshas involved
-2. Ayurvedic Remedies (home treatments, herbs, diet, and routine)
-3. When to consult an Ayurvedic practitioner
+Patient details:
+- Name: ${name}
+- Age: ${age}
+- Gender: ${gender}
+- Symptoms: ${symptoms}
+- Severity: ${severity}
+- Additional Info: ${details || "None"}
+
+Provide a structured response with:
+1. 🌿 Dosha Imbalance Analysis
+2. 🍵 Home Remedies, Herbs, and Diet
+3. ⚕️ When to Consult a Practitioner
 `;
     }
 
-    // 🪷 Generate AI response
+    // 💬 Generate response
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
           content:
-            "You are a professional Ayurvedic AI doctor. Use traditional Ayurvedic reasoning safely and clearly.",
+            "You are a professional Ayurvedic AI doctor. Use authentic Ayurvedic reasoning but keep it simple, safe, and practical for modern users.",
         },
         { role: "user", content: prompt },
       ],
     });
 
-    const result = completion.choices[0]?.message?.content || "No response";
+    const result = completion.choices[0]?.message?.content?.trim() || "⚠️ No response received from AI.";
 
-    // 🧾 Save only main analyses (not follow-ups)
+    // 🧾 Save analysis (main only)
     if (!followUp) {
-      await db.collection("analyses").add({
+      const cleanData = {
         userId: uid,
         agent: "ayurvedic",
         form: { name, age, gender, symptoms, severity, details },
         results: { ayurvedic: result },
         createdAt: new Date().toISOString(),
-      });
+      };
+      await db.collection("analyses").add(cleanData);
     }
 
     res.status(200).json({ success: true, result });
   } catch (err) {
     console.error("🌿 Ayurvedic AI Error:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message || "Internal Server Error" });
   }
 }
-
