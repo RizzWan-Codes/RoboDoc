@@ -252,6 +252,39 @@ function cleanUndefined(obj) {
       resultsContainer.innerHTML = "";
       toast("Saving and analyzing...");
 
+      // 💰 Deduct coins for all selected agents (10 per agent)
+const totalDeduction = payload.agents.length * 10;
+const walletRef = doc(db, "wallets", currentUser.uid);
+const walletSnap = await getDoc(walletRef);
+const oldCoins = walletSnap.exists() ? walletSnap.data().coins || 0 : 0;
+
+if (oldCoins < totalDeduction) {
+  toast(`⚠️ Not enough coins! You need ${totalDeduction} coins but have only ${oldCoins}.`, "error");
+  analyzeBtn.disabled = false;
+  analyzeBtn.textContent = "Analyze";
+  return;
+}
+
+const newBalance = oldCoins - totalDeduction;
+
+// 🔥 Update wallet balance in Firestore
+await setDoc(
+  walletRef,
+  {
+    coins: newBalance,
+    lastTransaction: new Date().toISOString(),
+    source: "multi_agent_analysis",
+    deducted: totalDeduction
+  },
+  { merge: true }
+);
+
+// ✅ Update UI coin balance
+await updateBalanceUI(newBalance);
+
+toast(`💰 Deducted ${totalDeduction} coins for ${payload.agents.length} selected agent(s).`, "info");
+
+
       try {
         // Save the request to Firestore (collection 'analyses')
         const analysesRef = collection(db, "analyses");
@@ -575,20 +608,24 @@ document.getElementById("summarizeHealthBtn").addEventListener("click", async ()
       }
     };
 
-    // 🖋️ Typewriter effect for smooth AI responses
-function typeWriterEffect(element, text, speed = 20) {
-  element.textContent = "";
+function typeWriterEffect(el, text, speed = 20) {
+  el.innerHTML = ""; // reset
   let i = 0;
+  const formattedText = text
+    .replace(/\n\s*\n/g, "<br><br>") // double line breaks
+    .replace(/\n/g, "<br>"); // single line breaks
 
   function typing() {
-    if (i < text.length) {
-      element.textContent += text.charAt(i);
+    if (i < formattedText.length) {
+      el.innerHTML += formattedText.charAt(i);
       i++;
+      el.scrollTop = el.scrollHeight;
       setTimeout(typing, speed);
     }
   }
   typing();
 }
+
 
    // Renders agent result with typewriter effect + continue chat button
 function renderAgentResult(agent, text) {
