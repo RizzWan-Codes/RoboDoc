@@ -43,20 +43,20 @@ export default async function handler(req, res) {
     await walletRef.update({ coins: oldCoins - 2, lastTransaction: new Date().toISOString() });
 
 const prompt = `
-You are an AI Diet Specialist blending Ayurvedic principles with modern nutritional science.
+You are an AI Diet Specialist blending Modern Science and Healthcare, like Allopathic principles with modern nutritional science.
 
 Here’s the patient's recent health data:
 ${formattedHistory}
 
 Based on this data, provide:
-1. A short summary of their likely body imbalance (Vata / Pitta / Kapha type) — approximate only.
+1. A short summary of their likely body imbalance state — approximate only.
 2. A complete one-day meal plan (Breakfast, Lunch, Snacks, Dinner).
 3. Foods to AVOID and why.
-4. Ayurvedic advice for their current symptoms (include herbal or lifestyle tips if relevant).
+4. Scientific advice for their current symptoms (include medicinal or lifestyle tips if relevant).
 5. Modern nutrition insights (protein, fiber, hydration focus).
 
 Response Format:
-🌿 Ayurvedic Body Type & Insights:
+🌿 Allopatic Body State & Insight:
 🥗 Meal Plan:
 🚫 Avoid These:
 💧 Lifestyle & Modern Nutrition Tips:
@@ -79,3 +79,4 @@ Response Format:
     res.json({ success: false, error: err.message });
   }
 }
+
