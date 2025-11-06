@@ -194,6 +194,12 @@ onAuthStateChanged(auth, async (user) => {
       }
     });
 
+    // 🔧 Removes undefined values so Firestore doesn't scream
+function cleanUndefined(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+
     // SUBMIT / ANALYZE
     analyzeBtn.addEventListener("click", async (e) => {
       e.preventDefault();
@@ -234,13 +240,16 @@ onAuthStateChanged(auth, async (user) => {
       try {
         // Save the request to Firestore (collection 'analyses')
         const analysesRef = collection(db, "analyses");
-        const docRef = await addDoc(analysesRef, {
-          userId: payload.userId,
-          form: payload,
-          agents: payload.agents,
-          status: "queued",
-          createdAt: serverTimestamp()
-        });
+        const cleanedPayload = cleanUndefined(payload);
+
+const docRef = await addDoc(analysesRef, {
+  userId: cleanedPayload.userId,
+  form: cleanedPayload,
+  agents: cleanedPayload.agents,
+  status: "queued",
+  createdAt: serverTimestamp()
+});
+
         lastAnalysisId = docRef.id;
 
 // 🧠 Call all selected AI agent endpoints (parallel + smooth)
