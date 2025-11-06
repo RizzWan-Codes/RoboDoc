@@ -37,44 +37,42 @@ export default async function handler(req, res) {
     if (!uid || !symptoms)
       return res.status(400).json({ error: "Missing fields" });
 
-    // 🪙 Coin management
-    const walletRef = db.collection("wallets").doc(uid);
-    const walletSnap = await walletRef.get();
-    const oldCoins = walletSnap.exists ? walletSnap.data().coins || 0 : 0;
-
-    const cost = followUp ? 1 : 10; // 1 for follow-up, 10 for main analysis
-
+    // 🚫 Removed coin deduction — handled by dashboard
+    // const walletRef = db.collection("wallets").doc(uid);
+    // const walletSnap = await walletRef.get();
+    // const oldCoins = walletSnap.exists ? walletSnap.data().coins || 0 : 0;
+    // const cost = followUp ? 1 : 10;
 
     // 🧠 Context-aware prompt
-    let prompt = "";
-
+    let prompt;
     if (followUp && lastResponse) {
       prompt = `
-You are continuing a follow-up chat with a patient.
-Previously, you said:
+You are continuing a follow-up conversation as an Allopathic doctor.
+
+Previously, you advised:
 "${lastResponse}"
 
-Now the patient asks:
+Now the patient says:
 "${symptoms}"
 
-Continue the conversation in a professional, allopathic medical tone.
-Respond in short, clear sentences and stay relevant.
+Continue the conversation in a professional, clear, and evidence-based tone.
+Keep it short, medically accurate, and focused.
 `;
     } else {
       prompt = `
 You are an Allopathic medical AI.
-Use conventional Western medical reasoning to analyze the patient:
-Name: ${name}
-Age: ${age}
-Gender: ${gender}
-Symptoms: ${symptoms}
-Severity: ${severity}
-Extra Info: ${details || "None"}
+Use conventional Western medical reasoning to analyze the patient's details:
+- Name: ${name}
+- Age: ${age}
+- Gender: ${gender}
+- Symptoms: ${symptoms}
+- Severity: ${severity}
+- Additional Info: ${details || "None"}
 
-Respond in 3 sections:
-1. Possible medical conditions (based on common differentials)
-2. Recommended over-the-counter steps or precautions
-3. When to seek medical or emergency care
+Respond in 3 concise sections:
+1. 🧠 Possible medical conditions (based on common differentials)
+2. 💊 Over-the-counter steps or lifestyle precautions
+3. 🚨 When to seek medical or emergency care
 `;
     }
 
@@ -85,30 +83,31 @@ Respond in 3 sections:
         {
           role: "system",
           content:
-            "You are an AI doctor who follows evidence-based medicine. Be precise, medically accurate, and helpful.",
+            "You are an AI doctor trained in evidence-based medicine. Provide accurate, safe, and helpful medical advice without overstepping ethical limits.",
         },
         { role: "user", content: prompt },
       ],
     });
 
-    const result = completion.choices[0]?.message?.content || "No response";
+    const result =
+      completion.choices[0]?.message?.content?.trim() || "⚠️ No response received.";
 
-    // 🩺 Store analysis (skip for follow-up)
+    // 🩺 Save main analysis (not follow-ups)
     if (!followUp) {
-      await db.collection("analyses").add({
+      const data = {
         userId: uid,
         agent: "allopathic",
         form: { name, age, gender, symptoms, severity, details },
         results: { allopathic: result },
         createdAt: new Date().toISOString(),
-      });
+      };
+      await db.collection("analyses").add(data);
     }
 
-    // ✅ Return success
+    // ✅ Return result
     res.status(200).json({ success: true, result });
   } catch (err) {
-    console.error("Allopathic AI Error:", err);
-    res.status(500).json({ error: err.message });
+    console.error("💊 Allopathic AI Error:", err);
+    res.status(500).json({ error: err.message || "Server Error" });
   }
 }
-
