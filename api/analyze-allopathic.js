@@ -43,14 +43,7 @@ export default async function handler(req, res) {
     const oldCoins = walletSnap.exists ? walletSnap.data().coins || 0 : 0;
 
     const cost = followUp ? 1 : 10; // 1 for follow-up, 10 for main analysis
-    if (oldCoins < cost)
-      return res.status(400).json({ error: "Not enough coins" });
 
-    await walletRef.update({
-      coins: oldCoins - cost,
-      lastTransaction: new Date().toISOString(),
-      source: followUp ? "chat-message" : "full-analysis",
-    });
 
     // 🧠 Context-aware prompt
     let prompt = "";
@@ -118,3 +111,4 @@ Respond in 3 sections:
     res.status(500).json({ error: err.message });
   }
 }
+
