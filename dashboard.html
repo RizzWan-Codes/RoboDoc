@@ -25,7 +25,18 @@
     @media (max-width: 900px) {
       .sidebar { display: none; }
     }
-    .typewriter { white-space: pre-wrap; word-break: break-word; }
+ 
+  .typewriter::after {
+    content: '|';
+    animation: blink 0.7s infinite;
+    color: #2563eb;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+
   </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 via-white to-green-50 min-h-screen font-sans">
@@ -409,6 +420,21 @@ toast("All analyses completed ✅", "success");
       }
     };
 
+    // 🖋️ Typewriter effect for smooth AI responses
+function typeWriterEffect(element, text, speed = 20) {
+  element.textContent = "";
+  let i = 0;
+
+  function typing() {
+    if (i < text.length) {
+      element.textContent += text.charAt(i);
+      i++;
+      setTimeout(typing, speed);
+    }
+  }
+  typing();
+}
+
    // Renders agent result with typewriter effect + continue chat button
 function renderAgentResult(agent, text) {
     let lastBotReply = text; // store the last message for this doctor
@@ -421,7 +447,7 @@ function renderAgentResult(agent, text) {
 
   const content = document.createElement("div");
   content.className = "typewriter text-gray-700 mb-4";
-  content.textContent = text;
+  typeWriterEffect(content, text);
 
   // 💬 Inline Chat UI
   const chatBox = document.createElement("div");
@@ -477,8 +503,8 @@ sendBtn.addEventListener("click", async () => {
     botMsg.className = "text-left text-gray-800 bg-gray-100 p-2 rounded-lg my-2";
 
     if (data.success) {
-      botMsg.textContent = data.result;
-       lastBotReply = data.result; // update for next follow-up
+  typeWriterEffect(botMsg, data.result);
+  lastBotReply = data.result;
       
     } else {
       botMsg.textContent = `⚠️ ${data.error || "AI failed to respond"}`;
