@@ -308,33 +308,16 @@ await setDoc(
   { merge: true }
 );
 
+
 // 🧩 Update chart + history
 await loadAnalysesAndChart();
+
+// Refresh balance from Firestore so UI shows the authoritative value
+await updateBalanceUI();
+
+// Friendly final toast
 toast("All analyses completed ✅", "success");
 
-
-
-// Wait for all agents to complete
-await Promise.all(promises);
-
-// ✅ Save all results to Firestore once finished
-await setDoc(
-  doc(db, "analyses", docRef.id),
-  {
-    results,
-    status: "done",
-    completedAt: serverTimestamp()
-  },
-  { merge: true }
-);
-
-
-// Update UI coin balance
-updateBalanceUI(newBalance);
-
-// 🧩 Update chart + history
-await loadAnalysesAndChart();
-toast(`All analyses completed ✅  (−${totalDeduction} coins)`, "success");
 
       } catch (err) {
         console.error(err);
@@ -536,12 +519,27 @@ coinsInput.addEventListener('input', () => {
 });
 
 // --- Update UI balance safely ---
-function updateBalanceUI(balance) {
-  coinBalanceSpan.textContent = balance;
-  window.__COINS__ = balance;
-  const analyzeBtn = document.getElementById("analyzeBtn");
-  if (analyzeBtn) analyzeBtn.disabled = balance < 10;
+async function updateBalanceUI(balance) {
+  try {
+    // 🧠 If no balance passed, fetch latest from Firestore
+    if (typeof balance === "undefined" || balance === null) {
+      const walletRef = doc(db, "wallets", currentUser.uid);
+      const walletSnap = await getDoc(walletRef);
+      balance = walletSnap.exists() ? (walletSnap.data().coins || 0) : 0;
+    }
+
+    // 💰 Update UI + global variable
+    coinBalanceSpan.textContent = balance;
+    window.__COINS__ = balance;
+
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    if (analyzeBtn) analyzeBtn.disabled = balance < 10;
+  } catch (err) {
+    console.warn("⚠️ Failed to update balance UI:", err);
+    coinBalanceSpan.textContent = "—";
+  }
 }
+
 
 // --- Start Razorpay flow ---
 async function startPurchase(coins, amountINR) {
