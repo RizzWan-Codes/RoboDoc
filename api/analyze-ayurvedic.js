@@ -1,8 +1,7 @@
 import OpenAI from "openai";
-import { initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
 import admin from "firebase-admin";
 
+// 🧩 Safe Firebase Admin init
 if (!admin.apps.length) {
   try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -14,33 +13,62 @@ if (!admin.apps.length) {
     console.error("❌ Failed to initialize Firebase Admin:", err);
   }
 }
-const db = getFirestore(global._firebaseApp);
 
+const db = admin.firestore();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+  if (req.method !== "POST")
+    return res.status(405).json({ error: "Method Not Allowed" });
 
   try {
-    const { uid, name, age, gender, symptoms, severity, details } = req.body;
-    if (!uid || !symptoms) return res.status(400).json({ error: "Missing fields" });
+    const {
+      uid,
+      name,
+      age,
+      gender,
+      symptoms,
+      severity,
+      details,
+      followUp,
+      lastResponse,
+    } = req.body;
 
-    // Deduct coins
+    if (!uid || !symptoms)
+      return res.status(400).json({ error: "Missing fields" });
+
+    // 💰 Wallet check and deduction
     const walletRef = db.collection("wallets").doc(uid);
     const walletSnap = await walletRef.get();
     const oldCoins = walletSnap.exists ? walletSnap.data().coins || 0 : 0;
-    // 🪙 Deduct coins (10 for first analysis, 1 for follow-ups)
-const cost = req.body.followUp ? 1 : 10;
 
-if (oldCoins < cost) return res.status(400).json({ error: "Not enough coins" });
+    const cost = followUp ? 1 : 10; // 1 for follow-ups, 10 for first-time analysis
+    if (oldCoins < cost)
+      return res.status(400).json({ error: "Not enough coins" });
 
-await walletRef.update({
-  coins: oldCoins - cost,
-  lastTransaction: new Date().toISOString(),
-  source: req.body.followUp ? "chat-message" : "full-analysis",
-});
+    await walletRef.update({
+      coins: oldCoins - cost,
+      lastTransaction: new Date().toISOString(),
+      source: followUp ? "chat-message" : "full-analysis",
+    });
 
-    const prompt = `
+    // 🧠 Smart prompt — remembers past response if follow-up
+    let prompt;
+    if (followUp && lastResponse) {
+      prompt = `
+You are continuing a follow-up Ayurvedic consultation.
+
+Previously, you said:
+"${lastResponse}"
+
+Now the patient asks:
+"${symptoms}"
+
+Continue advising based on Ayurvedic reasoning (Dosha balance, diet, herbs, routine, etc.).
+Keep it short, clear, and context-aware.
+`;
+    } else {
+      prompt = `
 You are an Ayurvedic medical expert AI.
 Use Ayurvedic principles (Dosha, Agni, Prakriti, etc.) to analyze the patient's details:
 Name: ${name}
@@ -51,33 +79,41 @@ Severity: ${severity}
 Extra Info: ${details || "None"}
 
 Give the response in 3 parts:
-1. Likely Imbalances or Doshas
-2. Suggested Ayurvedic Remedies (home treatments, herbs, diet)
+1. Likely Imbalances or Doshas involved
+2. Ayurvedic Remedies (home treatments, herbs, diet, and routine)
 3. When to consult an Ayurvedic practitioner
 `;
+    }
 
+    // 🪷 Generate AI response
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: "You are a professional Ayurvedic AI doctor. Never give unsafe advice." },
+        {
+          role: "system",
+          content:
+            "You are a professional Ayurvedic AI doctor. Use traditional Ayurvedic reasoning safely and clearly.",
+        },
         { role: "user", content: prompt },
       ],
     });
 
-    const result = completion.choices[0].message.content;
+    const result = completion.choices[0]?.message?.content || "No response";
 
-    const docRef = await db.collection("analyses").add({
-      userId: uid,
-      agent: "ayurvedic",
-      form: { name, age, gender, symptoms, severity, details },
-      results: { ayurvedic: result },
-      createdAt: new Date().toISOString(),
-    });
+    // 🧾 Save only main analyses (not follow-ups)
+    if (!followUp) {
+      await db.collection("analyses").add({
+        userId: uid,
+        agent: "ayurvedic",
+        form: { name, age, gender, symptoms, severity, details },
+        results: { ayurvedic: result },
+        createdAt: new Date().toISOString(),
+      });
+    }
 
-    res.status(200).json({ success: true, id: docRef.id, result });
+    res.status(200).json({ success: true, result });
   } catch (err) {
-    console.error("Ayurvedic AI Error:", err);
+    console.error("🌿 Ayurvedic AI Error:", err);
     res.status(500).json({ error: err.message });
   }
 }
-
