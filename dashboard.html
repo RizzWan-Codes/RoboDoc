@@ -328,23 +328,6 @@ await setDoc(
   { merge: true }
 );
 
-// 💰 Deduct coins (10 per agent)
-const totalDeduction = payload.agents.length * 10;
-const walletRef = doc(db, "wallets", currentUser.uid);
-const walletSnap = await getDoc(walletRef);
-const oldCoins = walletSnap.exists() ? walletSnap.data().coins || 0 : 0;
-const newBalance = Math.max(0, oldCoins - totalDeduction);
-
-// Update wallet in Firestore
-await setDoc(
-  walletRef,
-  {
-    coins: newBalance,
-    lastTransaction: new Date().toISOString(),
-    source: "analysis_deduction"
-  },
-  { merge: true }
-);
 
 // Update UI coin balance
 updateBalanceUI(newBalance);
@@ -513,20 +496,7 @@ sendBtn.addEventListener("click", async () => {
     if (data.success) {
       botMsg.textContent = data.result;
        lastBotReply = data.result; // update for next follow-up
-      // 💰 Deduct 1 coin only if the doctor actually replied
-      try {
-        const walletRef = doc(db, "wallets", currentUser.uid);
-        const walletSnap = await getDoc(walletRef);
-        if (walletSnap.exists()) {
-          const coins = walletSnap.data().coins || 0;
-          const newBalance = Math.max(0, coins - 1);
-          await setDoc(walletRef, { coins: newBalance }, { merge: true });
-          updateBalanceUI(newBalance);
-        }
-      } catch (err) {
-        console.warn("Failed to deduct coin:", err);
-      }
-
+      
     } else {
       botMsg.textContent = `⚠️ ${data.error || "AI failed to respond"}`;
       botMsg.classList.add("text-red-600");
