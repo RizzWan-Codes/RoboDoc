@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>RoboDoc Dashboard</title>
+  <link rel="icon" href="favicon.png">
 
   <!-- Tailwind CDN (v2 compatible used earlier) -->
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -182,11 +183,7 @@ onAuthStateChanged(auth, async (user) => {
     const resultsContainer = document.getElementById("resultsContainer");
     const analysesList = document.getElementById("analysesList");
     const chartCanvas = document.getElementById("healthChart");
-    const continueChatBtn = document.getElementById("continueChatBtn");
-    const chatModal = document.getElementById("chatModal");
-    const chatInput = document.getElementById("chatInput");
-    const chatArea = document.getElementById("chatArea");
-
+  
     // LOGOUT
     logoutBtn.addEventListener("click", async () => {
       try {
@@ -306,9 +303,7 @@ await setDoc(
 await loadAnalysesAndChart();
 toast("All analyses completed ✅", "success");
 
-// 🗣️ Show continue chat button
-continueChatBtn.dataset.analysisId = docRef.id;
-continueChatBtn.classList.remove("hidden");
+
 
 // Wait for all agents to complete
 await Promise.all(promises);
@@ -348,11 +343,6 @@ updateBalanceUI(newBalance);
 // 🧩 Update chart + history
 await loadAnalysesAndChart();
 toast(`All analyses completed ✅  (−${totalDeduction} coins)`, "success");
-
-// 🗣️ Show continue chat button
-continueChatBtn.dataset.analysisId = docRef.id;
-continueChatBtn.classList.remove("hidden");
-
 
       } catch (err) {
         console.error(err);
@@ -446,6 +436,7 @@ continueChatBtn.classList.remove("hidden");
 
    // Renders agent result with typewriter effect + continue chat button
 function renderAgentResult(agent, text) {
+    let lastBotReply = text; // store the last message for this doctor
   const wrapper = document.createElement("div");
   wrapper.className = "mb-6 bg-white p-6 rounded-xl shadow relative";
   
@@ -455,116 +446,97 @@ function renderAgentResult(agent, text) {
 
   const content = document.createElement("div");
   content.className = "typewriter text-gray-700 mb-4";
+  content.textContent = text;
 
-  // Continue Chat button (hidden until text fully renders)
-  const chatBtn = document.createElement("button");
-  chatBtn.className = "hidden bg-gradient-to-r from-blue-600 to-green-500 text-white px-4 py-2 rounded-lg shadow hover:from-blue-700 hover:to-green-600 transition";
-  chatBtn.textContent = "💬 Continue Chat";
+  // 💬 Inline Chat UI
+  const chatBox = document.createElement("div");
+  chatBox.className = "flex gap-2 items-center border-t pt-3 mt-3";
 
-  // Append all elements
+  const chatInput = document.createElement("input");
+  chatInput.placeholder = `Ask ${agent} doctor a follow-up...`;
+  chatInput.className = "flex-1 p-2 border rounded focus:ring-2 focus:ring-blue-400";
+
+  const sendBtn = document.createElement("button");
+  sendBtn.textContent = "Send";
+  sendBtn.className = "bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition";
+
+
+  chatBox.appendChild(chatInput);
+  chatBox.appendChild(sendBtn);
+
   wrapper.appendChild(title);
   wrapper.appendChild(content);
-  wrapper.appendChild(chatBtn);
+  wrapper.appendChild(chatBox);
   resultsContainer.appendChild(wrapper);
 
-  // typewriter animation
-  let i = 0;
-  const speed = 15;
-  const writer = () => {
-    if (i <= text.length) {
-      content.textContent = text.slice(0, i);
-      i++;
-      setTimeout(writer, speed);
-    } else {
-      chatBtn.classList.remove("hidden"); // show after animation completes
-    }
-  };
-  writer();
-
-  // Event listener for Continue Chat
-  chatBtn.addEventListener("click", () => {
-    const aid = lastAnalysisId;
-    if (!aid) return toast("No analysis found to continue.", "error");
-    chatModal.classList.remove("hidden");
-    chatModal.dataset.analysisId = aid;
-    chatArea.innerHTML = `<div class="text-sm italic text-gray-500 mb-2">Chat about your ${agent} analysis</div>`;
-  });
-}
-
-
-    // Continue chat
-    continueChatBtn.addEventListener("click", () => {
-      const aid = continueChatBtn.dataset.analysisId;
-      if (!aid) return toast("No analysis to continue", "error");
-      chatModal.classList.remove("hidden");
-      chatModal.dataset.analysisId = aid;
-      chatArea.innerHTML = `<div class="text-sm italic text-gray-500 mb-2">Start chatting about your last analysis</div>`;
-    });
-
-    // Chat send handler
-    document.getElementById("chatSendBtn").addEventListener("click", async () => {
+ // ✨ Send follow-up handler
+sendBtn.addEventListener("click", async () => {
   const msg = chatInput.value.trim();
-  if (!msg) return;
+  if (!msg) return toast("Write something first!", "error");
 
-  const agent = chatModal.dataset.agent || "allopathic"; // Default: allopathic
-  const analysisId = chatModal.dataset.analysisId || lastAnalysisId;
-
-  // Render your message
-  chatArea.innerHTML += `
-    <div class="text-right text-blue-700 font-medium mb-2">
-      You: ${escapeHtml(msg)}
-    </div>
-  `;
+  // render your question
+  const userMsg = document.createElement("div");
+  userMsg.className = "text-right text-blue-700 font-medium my-2";
+  userMsg.textContent = `You: ${msg}`;
+  content.appendChild(userMsg);
   chatInput.value = "";
-  chatArea.scrollTop = chatArea.scrollHeight;
 
   try {
-    // 💬 just send it to the SAME analyze endpoint again
     const res = await fetch(`/api/analyze-${agent}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         uid: currentUser.uid,
         name: "Follow-up",
-        symptoms: msg, // just use message as "symptom"
+        symptoms: msg,
         severity: 5,
         gender: "N/A",
         details: "",
-        followUp: true // ✅ KEEP this one
+        followUp: true,
+        lastResponse: lastBotReply // 👈 send *this doctor's* last reply only
       }),
     });
 
     const data = await res.json();
+    const botMsg = document.createElement("div");
+    botMsg.className = "text-left text-gray-800 bg-gray-100 p-2 rounded-lg my-2";
+
     if (data.success) {
-      chatArea.innerHTML += `
-        <div class="text-left text-gray-800 bg-gray-100 p-2 rounded-lg mb-2">
-          ${escapeHtml(data.result)}
-        </div>
-      `;
+      botMsg.textContent = data.result;
+       lastBotReply = data.result; // update for next follow-up
+      // 💰 Deduct 1 coin only if the doctor actually replied
+      try {
+        const walletRef = doc(db, "wallets", currentUser.uid);
+        const walletSnap = await getDoc(walletRef);
+        if (walletSnap.exists()) {
+          const coins = walletSnap.data().coins || 0;
+          const newBalance = Math.max(0, coins - 1);
+          await setDoc(walletRef, { coins: newBalance }, { merge: true });
+          updateBalanceUI(newBalance);
+        }
+      } catch (err) {
+        console.warn("Failed to deduct coin:", err);
+      }
+
     } else {
-      chatArea.innerHTML += `
-        <div class="text-left text-red-600 mb-2">
-          ⚠️ ${escapeHtml(data.error || "AI failed to respond")}
-        </div>
-      `;
+      botMsg.textContent = `⚠️ ${data.error || "AI failed to respond"}`;
+      botMsg.classList.add("text-red-600");
     }
+
+    content.appendChild(botMsg);
+    content.scrollTop = content.scrollHeight;
+
   } catch (err) {
     console.error(err);
-    chatArea.innerHTML += `
-      <div class="text-left text-red-600 mb-2">
-        💥 ${escapeHtml(err.message)}
-      </div>
-    `;
+    const errMsg = document.createElement("div");
+    errMsg.className = "text-left text-red-600 my-2";
+    errMsg.textContent = `💥 ${err.message}`;
+    content.appendChild(errMsg);
   }
-
-  chatArea.scrollTop = chatArea.scrollHeight;
 });
 
-
-    // close chat
-    document.getElementById("chatCloseBtn").addEventListener("click", ()=> {
-      chatModal.classList.add("hidden");
-    });
+}
+    
 
     function escapeHtml(s) {
       return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));
@@ -729,9 +701,6 @@ document.querySelectorAll('.buy-fixed').forEach(btn => {
   <main class="flex-1 p-6">
     <header class="flex items-center justify-between mb-6">
       <h1 class="text-3xl font-extrabold text-blue-800">Welcome Back, <span id="usernameHeader">User</span>!</h1>
-      <div class="flex items-center gap-4">
-        <button id="continueChatBtn" class="hidden bg-indigo-600 text-white px-4 py-2 rounded">Continue Chat</button>
-      </div>
     </header>
 
     <section id="dashboard" class="mb-10">
@@ -966,20 +935,7 @@ document.querySelectorAll('.buy-fixed').forEach(btn => {
   </main>
 </div>
 
-<!-- CHAT MODAL -->
-<div id="chatModal" class="hidden fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-  <div class="bg-white rounded-xl w-full max-w-xl p-6 shadow-lg">
-    <div class="flex items-center justify-between mb-3">
-      <h3 class="font-semibold">RoboDoc Chat</h3>
-      <button id="chatCloseBtn" class="text-sm text-gray-500 hover:text-gray-700">Close</button>
-    </div>
-    <div id="chatArea" class="h-64 overflow-auto p-3 bg-gray-50 rounded mb-3"></div>
-    <div class="flex gap-2">
-      <input id="chatInput" class="flex-1 p-2 border rounded" placeholder="Ask follow-up question..." />
-      <button id="chatSendBtn" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Send</button>
-    </div>
-  </div>
-</div>
+
 
 <script>
   (function() {
