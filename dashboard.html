@@ -657,6 +657,62 @@ document.querySelectorAll('.buy-fixed').forEach(btn => {
     await startPurchase(coins, price);
   });
 });
+
+// -------- AUTO TOOL ANALYSIS LOGIC --------
+const toolGrid = document.getElementById("toolsGrid");
+const toolOutput = document.getElementById("toolOutput");
+const toolTitle = document.getElementById("toolTitle");
+const toolResult = document.getElementById("toolResult");
+
+toolGrid.addEventListener("click", async (e) => {
+  const card = e.target.closest(".tool-card");
+  if (!card || !currentUser) return;
+
+  const tool = card.dataset.tool;
+  const titles = {
+    nutritionist: "🥗 AI Nutritionist",
+    chef: "👨‍🍳 AI Chef",
+    exercise: "🏋️‍♂️ Exercise Planner",
+    diet: "🍎 Diet Recommendations",
+  };
+
+  toolOutput.classList.remove("hidden");
+  toolTitle.textContent = `${titles[tool]} is analyzing your health...`;
+  toolResult.innerHTML = "⏳ Fetching your health data...";
+
+  try {
+    const res = await fetch(`/api/tool-${tool}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid: currentUser.uid }),
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      toolTitle.textContent = titles[tool];
+      typeWriterEffect(toolResult, data.result);
+    } else {
+      toolResult.innerHTML = `⚠️ ${data.error || "Failed to analyze"}`;
+    }
+  } catch (err) {
+    toolResult.innerHTML = `💥 ${err.message}`;
+  }
+});
+
+// ✍️ Typewriter animation
+function typeWriterEffect(el, text) {
+  el.innerHTML = "";
+  let i = 0;
+  const speed = 25;
+  const interval = setInterval(() => {
+    if (i < text.length) {
+      el.innerHTML += text.charAt(i);
+      i++;
+      el.scrollTop = el.scrollHeight;
+    } else clearInterval(interval);
+  }, speed);
+}
+
 </script>
 
 <!-- PAGE LAYOUT -->
@@ -821,12 +877,45 @@ document.querySelectorAll('.buy-fixed').forEach(btn => {
 </section>
 
 
-    <section id="tools" class="hidden">
-      <div class="bg-white p-6 rounded-xl shadow">
-        <h2 class="text-xl font-semibold mb-4">Tools</h2>
-        <p class="text-gray-600">Additional tools coming soon...</p>
+<section id="tools" class="hidden p-6">
+  <div class="bg-white/90 backdrop-blur-md p-8 rounded-2xl shadow-lg border border-gray-100 transition hover:shadow-xl">
+    <h2 class="text-2xl font-extrabold text-blue-800 mb-6">Smart AI Tools</h2>
+
+    <div id="toolsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="tool-card p-6 bg-gradient-to-br from-green-50 to-blue-50 rounded-xl border hover:shadow-md transition cursor-pointer" data-tool="nutritionist">
+        <h3 class="text-lg font-bold text-green-700 mb-2">🥗 AI Nutritionist</h3>
+        <p class="text-gray-700 text-sm">Get instant personalized nutrition goals from your past health data.</p>
       </div>
-    </section>
+
+      <div class="tool-card p-6 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl border hover:shadow-md transition cursor-pointer" data-tool="chef">
+        <h3 class="text-lg font-bold text-yellow-700 mb-2">👨‍🍳 AI Chef (Recipes)</h3>
+        <p class="text-gray-700 text-sm">See recipes suited to your health & past analyses.</p>
+      </div>
+
+      <div class="tool-card p-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border hover:shadow-md transition cursor-pointer" data-tool="exercise">
+        <h3 class="text-lg font-bold text-indigo-700 mb-2">🏋️‍♂️ Exercise Planner</h3>
+        <p class="text-gray-700 text-sm">Auto-generate workout routines from your reports.</p>
+      </div>
+
+      <div class="tool-card p-6 bg-gradient-to-br from-pink-50 to-red-50 rounded-xl border hover:shadow-md transition cursor-pointer" data-tool="diet">
+        <h3 class="text-lg font-bold text-pink-700 mb-2">🍎 Diet Recommendations</h3>
+        <p class="text-gray-700 text-sm">Instant diet plan using your recent analyses.</p>
+      </div>
+
+      <div class="tool-card p-6 bg-gradient-to-br from-cyan-50 to-sky-50 rounded-xl border hover:shadow-md transition cursor-pointer" data-tool="summary">
+  <h3 class="text-lg font-bold text-sky-700 mb-2">🧾 Health Summary</h3>
+  <p class="text-gray-700 text-sm">Get a full AI report of your overall health progress and improvement tips.</p>
+</div>
+
+    </div>
+
+    <div id="toolOutput" class="mt-8 hidden bg-white p-6 rounded-xl shadow-inner border border-gray-200">
+      <div id="toolTitle" class="text-lg font-semibold text-blue-800 mb-2"></div>
+      <div id="toolResult" class="text-gray-700 whitespace-pre-wrap"></div>
+    </div>
+  </div>
+</section>
+
 
     <section id="history" class="hidden p-4">
       <div class="bg-white p-6 rounded-xl shadow">
