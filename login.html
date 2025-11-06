@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login — RoboDoc</title>
-   <link rel="icon" href="favicon.png">
+  <link rel="icon" href="favicon.png">
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
 <script type="module">
@@ -99,7 +99,10 @@
       const email = signupForm.querySelector("input[type='email']").value.trim();
       const pass = signupForm.querySelector("input[type='password']").value.trim();
 
-      if (!name || !email || !pass) return showToast("All fields are required", "error");
+      const agree = document.getElementById("cookieAgree").checked;
+if (!name || !email || !pass) return showToast("All fields are required", "error");
+if (!agree) return showToast("Please agree to our cookie preferences before signing up", "error");
+
 
       isLoggingIn = true;
       try {
@@ -464,20 +467,38 @@
         </div>
 
         <!-- SIGNUP -->
-        <div class="form">
-          <h1>Create Account</h1>
-          <div class="mb-3"><input type="text" placeholder="Full Name" /></div>
-          <div class="mb-3"><input type="email" placeholder="Email" /></div>
-          <div class="mb-3"><input type="password" placeholder="Password" /></div>
-          <button>Sign Up</button>
+<div class="form">
+  <h1>Create Account</h1>
+  <div class="mb-3"><input type="text" placeholder="Full Name" /></div>
+  <div class="mb-3"><input type="email" placeholder="Email" /></div>
+  <div class="mb-3"><input type="password" placeholder="Password" /></div>
 
-          <button class="google-btn">
-            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" />
-            Sign up with Google
-          </button>
+<!-- ✅ Cookie Agreement Checkbox -->
+<div class="flex items-center gap-2 mt-2 mb-4 bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm text-gray-700">
+  <input 
+    type="checkbox" 
+    id="cookieAgree" 
+    class="w-4 h-4 accent-blue-600 focus:ring-2 focus:ring-blue-400 rounded cursor-pointer"
+  >
+  <label for="cookieAgree" class="select-none">
+    By clicking <b>Sign Up</b> or making an account with <b>Google</b>, you agree to our 
+    <a href="#" class="text-blue-600 font-medium hover:underline">Cookie Policy</a> 
+    and 
+    <a href="#" class="text-blue-600 font-medium hover:underline">Data Usage Terms</a>.
+  </label>
+</div>
 
-          <div class="smalllink"><a href="#">Already have an account? Login</a></div>
-        </div>
+
+  <button>Sign Up</button>
+
+  <button class="google-btn">
+    <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" />
+    Sign up with Google
+  </button>
+
+  <div class="smalllink"><a href="#">Already have an account? Login</a></div>
+</div>
+
       </div>
     </div>
   </div>
@@ -501,4 +522,3 @@
   </script>
 </body>
 </html>
-
