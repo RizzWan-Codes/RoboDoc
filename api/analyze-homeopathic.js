@@ -37,13 +37,15 @@ export default async function handler(req, res) {
     if (!uid || !symptoms)
       return res.status(400).json({ error: "Missing fields" });
 
-    // 💰 Wallet check + deduction
-    const walletRef = db.collection("wallets").doc(uid);
-    const walletSnap = await walletRef.get();
-    const oldCoins = walletSnap.exists ? walletSnap.data().coins || 0 : 0;
+    // 🚫 Remove wallet deduction (it's now handled in dashboard.html)
+    // const walletRef = db.collection("wallets").doc(uid);
+    // const walletSnap = await walletRef.get();
+    // const oldCoins = walletSnap.exists ? walletSnap.data().coins || 0 : 0;
+    // const cost = followUp ? 1 : 10;
+    // if (oldCoins < cost)
+    //   return res.status(400).json({ error: "Not enough coins" });
+    // await walletRef.update({ coins: oldCoins - cost, lastTransaction: new Date().toISOString() });
 
-    const cost = followUp ? 1 : 10; // 1 coin for follow-up, 10 for new analysis
-    
     // 🧠 Smart prompt
     let prompt;
     if (followUp && lastResponse) {
@@ -109,4 +111,3 @@ Respond in 3 parts:
     res.status(500).json({ error: err.message });
   }
 }
-
