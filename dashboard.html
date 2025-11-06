@@ -608,23 +608,32 @@ document.getElementById("summarizeHealthBtn").addEventListener("click", async ()
       }
     };
 
-function typeWriterEffect(el, text, speed = 20) {
-  el.innerHTML = ""; // reset
-  let i = 0;
-  const formattedText = text
-    .replace(/\n\s*\n/g, "<br><br>") // double line breaks
-    .replace(/\n/g, "<br>"); // single line breaks
+function typeWriterEffect(element, text, speed = 20) {
+  // Convert markdown to HTML
+  const formatted = text
+    .replace(/\n/g, "<br>")
+    .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
+    .replace(/### (.*?)(<br>|$)/g, "<h3>$1</h3>")
+    .replace(/## (.*?)(<br>|$)/g, "<h4>$1</h4>")
+    .replace(/# (.*?)(<br>|$)/g, "<h5>$1</h5>");
 
-  function typing() {
-    if (i < formattedText.length) {
-      el.innerHTML += formattedText.charAt(i);
+  let i = 0;
+  element.innerHTML = "";
+
+  // Split into small chunks (not by single character but by tags or text)
+  const parts = formatted.match(/(<[^>]+>|[^<]+)/g) || [];
+
+  function type() {
+    if (i < parts.length) {
+      element.innerHTML += parts[i];
       i++;
-      el.scrollTop = el.scrollHeight;
-      setTimeout(typing, speed);
+      setTimeout(type, speed);
     }
   }
-  typing();
+
+  type();
 }
+
 
 
    // Renders agent result with typewriter effect + continue chat button
@@ -891,19 +900,6 @@ toolGrid.addEventListener("click", async (e) => {
   }
 });
 
-// ✍️ Typewriter animation
-function typeWriterEffect(el, text) {
-  el.innerHTML = "";
-  let i = 0;
-  const speed = 25;
-  const interval = setInterval(() => {
-    if (i < text.length) {
-      el.innerHTML += text.charAt(i);
-      i++;
-      el.scrollTop = el.scrollHeight;
-    } else clearInterval(interval);
-  }, speed);
-}
 
 document.querySelector('[data-section="settings"]').addEventListener("click", async () => {
   const nameField = document.getElementById("settingsName");
