@@ -36,8 +36,27 @@
     50% { opacity: 0; }
   }
 
+  
+  @keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+.shake { animation: shake 0.3s; }
+
+/* Make Smart Tools list interactive */
+#dashboard ul.text-sm.text-gray-600.space-y-2 li {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+#dashboard ul.text-sm.text-gray-600.space-y-2 li:hover {
+  color: #2563eb;
+  transform: translateX(3px);
+}
 
   </style>
+
+
 </head>
 <body class="bg-gradient-to-br from-blue-50 via-white to-green-50 min-h-screen font-sans">
 
@@ -61,6 +80,7 @@
     orderBy,
     limit,
     getDocs,
+    deleteDoc,
     serverTimestamp
   } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
@@ -957,6 +977,90 @@ saveBtn.onclick = async () => {
   };
 });
 
+// 🧨 Delete Analyses with Username Confirmation
+const deleteModal = document.getElementById("deleteModal");
+const openDeleteModalBtn = document.getElementById("openDeleteModalBtn");
+const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
+const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
+const confirmUsernameInput = document.getElementById("confirmUsernameInput");
+const confirmUsernameText = document.getElementById("confirmUsernameText");
+
+// Open modal
+openDeleteModalBtn.addEventListener("click", () => {
+  if (!currentUser) return toast("Please log in first", "error");
+  confirmUsernameText.textContent =
+    currentUser.displayName || currentUser.email.split("@")[0];
+  confirmUsernameInput.value = "";
+  deleteModal.classList.remove("hidden");
+});
+
+// Cancel modal
+cancelDeleteBtn.addEventListener("click", () => {
+  deleteModal.classList.add("hidden");
+});
+
+// Confirm deletion
+confirmDeleteBtn.addEventListener("click", async () => {
+  const expectedName =
+    currentUser.displayName || currentUser.email.split("@")[0];
+  const typedName = confirmUsernameInput.value.trim();
+
+  
+  if (typedName !== expectedName) {
+  confirmUsernameInput.classList.add("shake");
+  setTimeout(() => confirmUsernameInput.classList.remove("shake"), 300);
+  toast("❌ Username mismatch!", "error");
+  return;
+}
+
+
+  try {
+    const analysesRef = collection(db, "analyses");
+    const q = query(analysesRef, where("userId", "==", currentUser.uid));
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      toast("No records found to delete.", "info");
+      deleteModal.classList.add("hidden");
+      return;
+    }
+
+    const batch = [];
+    snap.forEach((docSnap) => {
+      batch.push(deleteDoc(doc(db, "analyses", docSnap.id)));
+    });
+
+    await Promise.all(batch);
+
+    deleteModal.classList.add("hidden");
+    toast("💣 All analysis records permanently deleted!", "success");
+
+    // Clear dashboard UI
+    document.getElementById("analysesList").innerHTML =
+      '<div class="text-gray-500 text-sm">No analyses yet.</div>';
+    document.getElementById("resultsContainer").innerHTML =
+      '<div class="text-gray-500 text-sm">All records wiped clean 💀</div>';
+  } catch (err) {
+    console.error(err);
+    toast("❌ Failed to delete analyses: " + err.message, "error");
+  }
+
+});
+
+// 🧠 Make Smart Tools in Overview open the Tools section
+document.querySelectorAll("#dashboard ul.text-sm.text-gray-600.space-y-2 li").forEach(li => {
+  li.style.cursor = "pointer";
+  li.addEventListener("click", () => {
+    const toolsTab = document.querySelector('[data-section="tools"]');
+    if (toolsTab) {
+      toolsTab.click();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      toast(`🔧 Opening ${li.textContent.trim()}...`, "info");
+    } else {
+      toast("⚠️ Tools section not found!", "error");
+    }
+  });
+});
 
 </script>
 
@@ -1265,6 +1369,45 @@ saveBtn.onclick = async () => {
         </button>
       </div>
     </div>
+    <!-- ⚠️ Danger Zone -->
+<div class="mt-10 border-t pt-6">
+  <h3 class="text-xl font-bold text-red-600 mb-3">Danger Zone</h3>
+  <p class="text-sm text-gray-600 mb-4">
+    Permanently delete <b>all</b> your past analysis records. 
+    This action cannot be undone.
+  </p>
+
+  <button 
+    id="openDeleteModalBtn"
+    class="bg-gradient-to-r from-red-500 to-red-700 text-white px-6 py-3 rounded-lg font-semibold hover:from-red-600 hover:to-red-800 shadow-md transition-all"
+  >
+    🧨 Delete Analyze Records
+  </button>
+</div>
+
+<!-- 🩸 Confirm Modal -->
+<div id="deleteModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center hidden z-50">
+  <div class="bg-white rounded-xl p-8 shadow-2xl max-w-md w-full border border-red-200 text-center">
+    <h2 class="text-2xl font-bold text-red-600 mb-3">Confirm Deletion</h2>
+    <p class="text-sm text-gray-600 mb-4">
+      To confirm, type your username (<b id="confirmUsernameText"></b>) below.
+      This will permanently delete all your analysis records.
+    </p>
+
+    <input 
+      id="confirmUsernameInput"
+      type="text"
+      placeholder="Type your username..."
+      class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-400 mb-4"
+    />
+
+    <div class="flex justify-end gap-3">
+      <button id="cancelDeleteBtn" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition">Cancel</button>
+      <button id="confirmDeleteBtn" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">Confirm Delete</button>
+    </div>
+  </div>
+</div>
+
   </div>
 </section>
 
