@@ -54,6 +54,50 @@
   transform: translateX(3px);
 }
 
+
+/* ====================== */
+/* 📱 SIDEBAR RESPONSIVE  */
+/* ====================== */
+
+/* Sidebar hidden by default on mobile */
+@media (max-width: 900px) {
+  .sidebar {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: white;
+    z-index: 50;
+    min-width: 70%;
+    max-width: 80%;
+    height: 100%;
+    box-shadow: 0 0 15px rgba(0,0,0,0.15);
+    animation: slideIn 0.3s ease forwards;
+  }
+
+  .sidebar.active {
+    display: flex;
+  }
+
+  @keyframes slideIn {
+    from { transform: translateX(-100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  /* Dim background when sidebar opens */
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 40;
+    backdrop-filter: blur(2px);
+  }
+  .sidebar-backdrop.active {
+    display: block;
+  }
+}
+
+
   </style>
 
 
@@ -1107,9 +1151,20 @@ document.querySelectorAll("#dashboard ul.text-sm.text-gray-600.space-y-2 li").fo
 
   <!-- MAIN -->
   <main class="flex-1 p-6">
-    <header class="flex items-center justify-between mb-6">
-      <h1 class="text-3xl font-extrabold text-blue-800">Welcome Back, <span id="usernameHeader">User</span>!</h1>
-    </header>
+    <header class="flex items-center justify-between mb-6 relative">
+  <div class="flex items-center gap-3">
+    <!-- 🍔 Hamburger Icon -->
+    <button id="menuToggle" class="md:hidden p-2 border border-gray-200 rounded-lg hover:bg-gray-100 transition">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+    <h1 class="text-3xl font-extrabold text-blue-800">
+      Welcome Back, <span id="usernameHeader">User</span>!
+    </h1>
+  </div>
+</header>
+
 
     <section id="dashboard" class="mb-10">
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1555,6 +1610,29 @@ document.querySelectorAll("#dashboard ul.text-sm.text-gray-600.space-y-2 li").fo
       });
     }
   });
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const menuToggle = document.getElementById("menuToggle");
+  const sidebar = document.querySelector(".sidebar");
+
+  // Create backdrop element
+  const backdrop = document.createElement("div");
+  backdrop.classList.add("sidebar-backdrop");
+  document.body.appendChild(backdrop);
+
+  menuToggle.addEventListener("click", () => {
+    sidebar.classList.toggle("active");
+    backdrop.classList.toggle("active");
+  });
+
+  // Close sidebar if backdrop clicked
+  backdrop.addEventListener("click", () => {
+    sidebar.classList.remove("active");
+    backdrop.classList.remove("active");
+  });
+});
 </script>
 
 
