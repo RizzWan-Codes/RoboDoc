@@ -672,32 +672,6 @@ document.getElementById("summarizeHealthBtn").addEventListener("click", async ()
       }
     };
 
-function typeWriterEffect(element, text, speed = 20) {
-  // Convert markdown to HTML
-  const formatted = text
-    .replace(/\n/g, "<br>")
-    .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
-    .replace(/### (.*?)(<br>|$)/g, "<h3>$1</h3>")
-    .replace(/## (.*?)(<br>|$)/g, "<h4>$1</h4>")
-    .replace(/# (.*?)(<br>|$)/g, "<h5>$1</h5>");
-
-  let i = 0;
-  element.innerHTML = "";
-
-  // Split into small chunks (not by single character but by tags or text)
-  const parts = formatted.match(/(<[^>]+>|[^<]+)/g) || [];
-
-  function type() {
-    if (i < parts.length) {
-      element.innerHTML += parts[i];
-      i++;
-      setTimeout(type, speed);
-    }
-  }
-
-  type();
-}
-
 
 
    // Renders agent result with typewriter effect + continue chat button
@@ -1590,6 +1564,35 @@ document.querySelectorAll("#dashboard ul.text-sm.text-gray-600.space-y-2 li").fo
       });
     });
   })();
+
+
+  function typeWriterEffect(element, text, speed = 20) {
+  // Convert markdown to HTML
+  const formatted = text
+    .replace(/\n/g, "<br>")
+    .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
+    .replace(/### (.*?)(<br>|$)/g, "<h3>$1</h3>")
+    .replace(/## (.*?)(<br>|$)/g, "<h4>$1</h4>")
+    .replace(/# (.*?)(<br>|$)/g, "<h5>$1</h5>");
+
+  let i = 0;
+  element.innerHTML = "";
+
+  // Split into small chunks (not by single character but by tags or text)
+  const parts = formatted.match(/(<[^>]+>|[^<]+)/g) || [];
+
+  function type() {
+    if (i < parts.length) {
+      element.innerHTML += parts[i];
+      i++;
+      setTimeout(type, speed);
+    }
+  }
+
+  type();
+}
+
+
 
   // Live severity slider value update
   document.addEventListener("DOMContentLoaded", () => {
